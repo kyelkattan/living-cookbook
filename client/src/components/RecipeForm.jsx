@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ComboBox from './ComboBox';
+import CategoryPicker from './CategoryPicker';
 import { UNITS } from '../data/units';
 
 const emptyIngredient = () => ({ amount: '', unit: '', item: '' });
@@ -12,19 +13,19 @@ function normalizeIngredient(ing) {
 export default function RecipeForm({ onSave, onCancel, initialRecipe }) {
   const [name, setName] = useState(initialRecipe?.name ?? '');
   const [description, setDescription] = useState(initialRecipe?.description ?? '');
+  const [categories, setCategories] = useState(initialRecipe?.categories ?? []);
   const [ingredients, setIngredients] = useState(
     initialRecipe?.ingredients?.map(normalizeIngredient) ?? [emptyIngredient(), emptyIngredient(), emptyIngredient()]
   );
   const [steps, setSteps] = useState(initialRecipe?.steps ?? ['', '', '']);
   const [pastItems, setPastItems] = useState([]);
+  const [pastCategories, setPastCategories] = useState([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch('/api/ingredient-items')
-      .then(r => r.json())
-      .then(setPastItems)
-      .catch(() => {});
+    fetch('/api/ingredient-items').then(r => r.json()).then(setPastItems).catch(() => {});
+    fetch('/api/categories').then(r => r.json()).then(setPastCategories).catch(() => {});
   }, []);
 
   const updateIngredient = (index, field, value) =>
@@ -47,12 +48,13 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe }) {
     const cleanSteps = steps.filter(s => s.trim());
 
     if (!name.trim()) return setError('Recipe name is required.');
+    if (!categories.some(c => c === 'Baking' || c === 'Cooking')) return setError('Select Baking, Cooking, or both.');
     if (!cleanIngredients.length) return setError('Add at least one ingredient.');
     if (!cleanSteps.length) return setError('Add at least one step.');
 
     setSaving(true);
     try {
-      await onSave({ name, description, ingredients: cleanIngredients, steps: cleanSteps });
+      await onSave({ name, description, categories, ingredients: cleanIngredients, steps: cleanSteps });
     } catch (e) {
       setError(e.message);
       setSaving(false);
@@ -87,6 +89,11 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe }) {
           value={description}
           onChange={e => setDescription(e.target.value)}
         />
+      </div>
+
+      <div className="form-group">
+        <label>Categories *</label>
+        <CategoryPicker value={categories} onChange={setCategories} pastCustom={pastCategories} />
       </div>
 
       <div className="form-group">

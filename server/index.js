@@ -217,12 +217,13 @@ app.get('/api/recipes', (req, res) => {
     recipes = recipes.filter(r =>
       r.name.toLowerCase().includes(term) ||
       r.description.toLowerCase().includes(term) ||
-      (r.ingredients || []).some(i => ingredientText(i).toLowerCase().includes(term))
+      (r.ingredients || []).some(i => ingredientText(i).toLowerCase().includes(term)) ||
+      (r.categories || []).some(c => c.toLowerCase().includes(term))
     );
   }
 
-  res.json(recipes.map(({ id, name, description, created_at, user_email }) =>
-    ({ id, name, description, created_at, user_email })
+  res.json(recipes.map(({ id, name, description, created_at, user_email, categories }) =>
+    ({ id, name, description, created_at, user_email, categories: categories || [] })
   ));
 });
 
@@ -231,6 +232,13 @@ app.get('/api/recipes/:id', (req, res) => {
   const recipe = recipes.find(r => r.id === Number(req.params.id));
   if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
   res.json(recipe);
+});
+
+app.get('/api/categories', (req, res) => {
+  const { recipes } = read();
+  const cats = new Set();
+  recipes.forEach(r => (r.categories || []).forEach(c => cats.add(c)));
+  res.json([...cats].sort((a, b) => a.localeCompare(b)));
 });
 
 app.get('/api/ingredient-items', (req, res) => {
@@ -246,9 +254,14 @@ app.get('/api/ingredient-items', (req, res) => {
 });
 
 app.post('/api/recipes', requireAuth, (req, res) => {
-  const { name, description, ingredients, steps } = req.body;
+  const { name, description, categories, ingredients, steps } = req.body;
 
   if (!name?.trim()) return res.status(400).json({ error: 'Recipe name is required' });
+
+  const validCategories = (categories || []).map(c => c.trim()).filter(Boolean);
+  if (!validCategories.some(c => c === 'Baking' || c === 'Cooking')) {
+    return res.status(400).json({ error: 'Recipe must be Baking, Cooking, or both' });
+  }
 
   const validIngredients = cleanIngredients(ingredients);
   const validSteps = (steps || []).map(s => s?.trim()).filter(Boolean);
@@ -263,6 +276,7 @@ app.post('/api/recipes', requireAuth, (req, res) => {
     user_email: req.user.email,
     name: name.trim(),
     description: description?.trim() || '',
+    categories: validCategories,
     ingredients: validIngredients,
     steps: validSteps,
     created_at: new Date().toISOString(),
@@ -273,9 +287,14 @@ app.post('/api/recipes', requireAuth, (req, res) => {
 });
 
 app.put('/api/recipes/:id', requireAuth, (req, res) => {
-  const { name, description, ingredients, steps } = req.body;
+  const { name, description, categories, ingredients, steps } = req.body;
 
   if (!name?.trim()) return res.status(400).json({ error: 'Recipe name is required' });
+
+  const validCategories = (categories || []).map(c => c.trim()).filter(Boolean);
+  if (!validCategories.some(c => c === 'Baking' || c === 'Cooking')) {
+    return res.status(400).json({ error: 'Recipe must be Baking, Cooking, or both' });
+  }
 
   const validIngredients = cleanIngredients(ingredients);
   const validSteps = (steps || []).map(s => s?.trim()).filter(Boolean);
@@ -291,7 +310,7 @@ app.put('/api/recipes/:id', requireAuth, (req, res) => {
     return res.status(403).json({ error: 'You can only edit your own recipes' });
   }
 
-  db.recipes[idx] = { ...db.recipes[idx], name: name.trim(), description: description?.trim() || '', ingredients: validIngredients, steps: validSteps };
+  db.recipes[idx] = { ...db.recipes[idx], name: name.trim(), description: description?.trim() || '', categories: validCategories, ingredients: validIngredients, steps: validSteps };
   write(db);
   res.json(db.recipes[idx]);
 });

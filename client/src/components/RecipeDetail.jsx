@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { REQUIRED_CATEGORIES } from '../data/categories';
 
 function formatIngredient(ing) {
   if (typeof ing === 'string') return ing;
@@ -13,6 +14,15 @@ export default function RecipeDetail({ recipe, onDelete, onEdit, user }) {
     <article className="recipe-detail">
       <h1>{recipe.name}</h1>
       {recipe.description && <p className="description">{recipe.description}</p>}
+      {recipe.categories?.length > 0 && (
+        <div className="chips recipe-chips">
+          {recipe.categories.map(cat => (
+            <span key={cat} className={`chip${REQUIRED_CATEGORIES.includes(cat) ? ' chip-active' : ''}`}>
+              {cat}
+            </span>
+          ))}
+        </div>
+      )}
       {recipe.user_email && (
         <p className="recipe-attribution">Added by {recipe.user_email}</p>
       )}

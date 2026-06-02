@@ -418,6 +418,66 @@ body {
 }
 .auth-toggle button:hover { text-decoration: underline; }
 
+/* ── Chips ── */
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.chip {
+  display: inline-block;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.28rem 0.8rem;
+  white-space: nowrap;
+  line-height: 1.4;
+  background: var(--step-bg);
+  color: var(--text-muted);
+}
+
+button.chip {
+  cursor: pointer;
+  background: var(--surface);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+button.chip:hover { border-color: var(--primary); color: var(--primary); }
+
+.chip-active {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important;
+}
+button.chip-active:hover { background: var(--primary-hover) !important; border-color: var(--primary-hover) !important; }
+
+.chip-required:not(.chip-active) {
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.chip-sm { font-size: 0.72rem; padding: 0.18rem 0.6rem; }
+
+.chip-custom.chip-active { background: var(--text-muted) !important; border-color: var(--text-muted) !important; }
+
+.recipe-chips { margin: 0.5rem 0 0.75rem; }
+.card-chips { margin-bottom: 0.1rem; pointer-events: none; }
+
+/* ── Category picker ── */
+.category-picker { display: flex; flex-direction: column; gap: 0.9rem; }
+
+.category-group { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.category-group-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.category-group-hint { font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+.custom-category-input { margin-top: 0.5rem; max-width: 280px; }
+
 /* ── Ingredient three-column layout ── */
 .ingredient-col-headers {
   display: grid;
