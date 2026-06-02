@@ -14,6 +14,11 @@ export default function RecipeDetail({ recipe, onDelete, onEdit, user }) {
     <article className="recipe-detail">
       <h1>{recipe.name}</h1>
       {recipe.description && <p className="description">{recipe.description}</p>}
+      {recipe.image && (
+        <div className="recipe-image">
+          <img src={`/uploads/${recipe.image}`} alt={recipe.name} />
+        </div>
+      )}
       {recipe.categories?.length > 0 && (
         <div className="chips recipe-chips">
           {recipe.categories.map(cat => (

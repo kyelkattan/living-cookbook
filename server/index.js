@@ -5,7 +5,37 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { read, write } = require('./db');
+
+// ── Uploads ───────────────────────────────────────────────────────────────────
+
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+
+const storage = multer.diskStorage({
+  destination: uploadsDir,
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ok = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype);
+    cb(ok ? null : new Error('Invalid file type'), ok);
+  },
+});
+
+function deleteUpload(filename) {
+  if (!filename) return;
+  fs.unlink(path.join(uploadsDir, filename), () => {});
+}
 
 const app = express();
 const PORT = 3001;
@@ -45,6 +75,7 @@ async function sendResetEmail(to, resetUrl) {
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
+app.use('/uploads', express.static(uploadsDir));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -206,6 +237,19 @@ app.post('/api/auth/reset-password', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── Image upload ─────────────────────────────────────────────────────────────
+
+app.post('/api/upload', requireAuth, (req, res) => {
+  upload.single('image')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'Image must be under 5 MB' : err.message });
+    }
+    if (err) return res.status(400).json({ error: 'Invalid file type. Use JPEG, PNG, WebP, or GIF.' });
+    if (!req.file) return res.status(400).json({ error: 'No image provided' });
+    res.json({ filename: req.file.filename });
+  });
+});
+
 // ── Recipes ───────────────────────────────────────────────────────────────────
 
 app.get('/api/recipes', (req, res) => {
@@ -222,8 +266,8 @@ app.get('/api/recipes', (req, res) => {
     );
   }
 
-  res.json(recipes.map(({ id, name, description, created_at, user_email, categories }) =>
-    ({ id, name, description, created_at, user_email, categories: categories || [] })
+  res.json(recipes.map(({ id, name, description, created_at, user_email, categories, image }) =>
+    ({ id, name, description, created_at, user_email, categories: categories || [], image: image || null })
   ));
 });
 
@@ -254,7 +298,7 @@ app.get('/api/ingredient-items', (req, res) => {
 });
 
 app.post('/api/recipes', requireAuth, (req, res) => {
-  const { name, description, categories, ingredients, steps } = req.body;
+  const { name, description, categories, image, ingredients, steps } = req.body;
 
   if (!name?.trim()) return res.status(400).json({ error: 'Recipe name is required' });
 
@@ -277,6 +321,7 @@ app.post('/api/recipes', requireAuth, (req, res) => {
     name: name.trim(),
     description: description?.trim() || '',
     categories: validCategories,
+    image: image || null,
     ingredients: validIngredients,
     steps: validSteps,
     created_at: new Date().toISOString(),
@@ -287,7 +332,7 @@ app.post('/api/recipes', requireAuth, (req, res) => {
 });
 
 app.put('/api/recipes/:id', requireAuth, (req, res) => {
-  const { name, description, categories, ingredients, steps } = req.body;
+  const { name, description, categories, image, ingredients, steps } = req.body;
 
   if (!name?.trim()) return res.status(400).json({ error: 'Recipe name is required' });
 
@@ -310,7 +355,10 @@ app.put('/api/recipes/:id', requireAuth, (req, res) => {
     return res.status(403).json({ error: 'You can only edit your own recipes' });
   }
 
-  db.recipes[idx] = { ...db.recipes[idx], name: name.trim(), description: description?.trim() || '', categories: validCategories, ingredients: validIngredients, steps: validSteps };
+  const oldImage = db.recipes[idx].image;
+  if (oldImage && oldImage !== image) deleteUpload(oldImage);
+
+  db.recipes[idx] = { ...db.recipes[idx], name: name.trim(), description: description?.trim() || '', categories: validCategories, image: image || null, ingredients: validIngredients, steps: validSteps };
   write(db);
   res.json(db.recipes[idx]);
 });
@@ -324,6 +372,7 @@ app.delete('/api/recipes/:id', requireAuth, (req, res) => {
     return res.status(403).json({ error: 'You can only delete your own recipes' });
   }
 
+  deleteUpload(db.recipes[idx].image);
   db.recipes.splice(idx, 1);
   write(db);
   res.status(204).send();

@@ -14,6 +14,10 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe }) {
   const [name, setName] = useState(initialRecipe?.name ?? '');
   const [description, setDescription] = useState(initialRecipe?.description ?? '');
   const [categories, setCategories] = useState(initialRecipe?.categories ?? []);
+  const [imageFilename, setImageFilename] = useState(initialRecipe?.image ?? null);
+  const [imagePreview, setImagePreview] = useState(initialRecipe?.image ? `/uploads/${initialRecipe.image}` : null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState('');
   const [ingredients, setIngredients] = useState(
     initialRecipe?.ingredients?.map(normalizeIngredient) ?? [emptyIngredient(), emptyIngredient(), emptyIngredient()]
   );
@@ -27,6 +31,29 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe }) {
     fetch('/api/ingredient-items').then(r => r.json()).then(setPastItems).catch(() => {});
     fetch('/api/categories').then(r => r.json()).then(setPastCategories).catch(() => {});
   }, []);
+
+  const handleImageSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImagePreview(URL.createObjectURL(file));
+    setImageError('');
+    setImageUploading(true);
+    try {
+      const form = new FormData();
+      form.append('image', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: form });
+      if (!res.ok) { const b = await res.json(); throw new Error(b.error || 'Upload failed'); }
+      const { filename } = await res.json();
+      setImageFilename(filename);
+    } catch (err) {
+      setImageError(err.message);
+      setImagePreview(null);
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const removeImage = () => { setImagePreview(null); setImageFilename(null); setImageError(''); };
 
   const updateIngredient = (index, field, value) =>
     setIngredients(prev => prev.map((ing, i) => i === index ? { ...ing, [field]: value } : ing));
@@ -54,7 +81,7 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe }) {
 
     setSaving(true);
     try {
-      await onSave({ name, description, categories, ingredients: cleanIngredients, steps: cleanSteps });
+      await onSave({ name, description, categories, image: imageFilename, ingredients: cleanIngredients, steps: cleanSteps });
     } catch (e) {
       setError(e.message);
       setSaving(false);
@@ -89,6 +116,25 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe }) {
           value={description}
           onChange={e => setDescription(e.target.value)}
         />
+      </div>
+
+      <div className="form-group">
+        <label>Photo</label>
+        {imagePreview ? (
+          <div className="image-preview">
+            <img src={imagePreview} alt="Recipe preview" />
+            <button type="button" className="image-preview-remove" onClick={removeImage}>Remove</button>
+            {imageUploading && <div className="image-uploading">Uploading…</div>}
+          </div>
+        ) : (
+          <label className="image-upload-zone" htmlFor="image-input">
+            <span>Click to add a photo</span>
+            <span className="image-upload-hint">JPEG, PNG, WebP or GIF · max 5 MB</span>
+          </label>
+        )}
+        <input id="image-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={handleImageSelect} style={{ display: 'none' }} />
+        {imageError && <p className="form-error" style={{ marginTop: '0.5rem' }}>{imageError}</p>}
       </div>
 
       <div className="form-group">

@@ -2,5 +2,6 @@ node_modules/
 client/node_modules/
 client/dist/
 server/cookbook.json
+server/uploads/
 .env
 *.local

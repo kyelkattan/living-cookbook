@@ -10,6 +10,11 @@ export default function RecipeCard({ recipe, onSelect }) {
   return (
     <div className="recipe-card" onClick={() => onSelect(recipe.id)} role="button" tabIndex={0}
       onKeyDown={e => e.key === 'Enter' && onSelect(recipe.id)}>
+      {recipe.image && (
+        <div className="card-image">
+          <img src={`/uploads/${recipe.image}`} alt={recipe.name} />
+        </div>
+      )}
       <h3>{recipe.name}</h3>
       {recipe.description && <p className="meta" style={{ marginBottom: '0.4rem' }}>{recipe.description}</p>}
       {cats.length > 0 && (
