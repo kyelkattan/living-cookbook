@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from './lib/supabase';
 import SearchBar from './components/SearchBar';
 import RecipeList from './components/RecipeList';
 import RecipeDetail from './components/RecipeDetail';
@@ -7,49 +8,90 @@ import AuthModal from './components/AuthModal';
 import ResetPasswordModal from './components/ResetPasswordModal';
 import HomePage from './components/HomePage';
 
-async function safeError(res, fallback) {
-  try { const b = await res.json(); return b.error || fallback; }
-  catch { return fallback; }
+function normalizeRecipe(r) {
+  return { ...r, user_username: r.profiles?.username || '' };
 }
 
 export default function App() {
   const [view, setView] = useState('home');
-  const [recipes, setRecipes] = useState([]);
+  const [allRecipes, setAllRecipes] = useState([]);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
-  const [resetToken, setResetToken] = useState(null);
+  const [showReset, setShowReset] = useState(false);
 
+  // Auth state — listen for session + handle password recovery links
   useEffect(() => {
-    fetch('/api/auth/me').then(r => r.json()).then(u => setUser(u)).catch(() => {});
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('reset');
-    if (token) { setResetToken(token); window.history.replaceState({}, '', window.location.pathname); }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+          username: session.user.user_metadata?.username || '',
+        });
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setShowReset(true);
+        return;
+      }
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          email: session.user.email,
+          username: session.user.user_metadata?.username || '',
+        });
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const fetchRecipes = useCallback(async (query = '') => {
+  // Fetch all recipes once; re-called after any mutation
+  const fetchRecipes = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const url = query ? `/api/recipes?search=${encodeURIComponent(query)}` : '/api/recipes';
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to load recipes');
-      setRecipes(await res.json());
+      const { data, error: err } = await supabase
+        .from('recipes')
+        .select('id, name, description, created_at, categories, image, tools, user_id, profiles(username)')
+        .order('created_at', { ascending: false });
+      if (err) throw err;
+      setAllRecipes((data || []).map(normalizeRecipe));
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    if (view === 'list') fetchRecipes(search);
-  }, [search, view, fetchRecipes]);
+  useEffect(() => { fetchRecipes(); }, [fetchRecipes]);
+
+  // Client-side search filter over the cached list
+  const recipes = useMemo(() => {
+    if (!search) return allRecipes;
+    const term = search.toLowerCase();
+    return allRecipes.filter(r =>
+      r.name.toLowerCase().includes(term) ||
+      (r.description || '').toLowerCase().includes(term) ||
+      (r.user_username || '').toLowerCase().includes(term) ||
+      (r.categories || []).some(c => c.toLowerCase().includes(term)) ||
+      (r.tools || []).some(t => t.toLowerCase().includes(term))
+    );
+  }, [allRecipes, search]);
 
   const handleSelectRecipe = async (id) => {
     try {
-      const res = await fetch(`/api/recipes/${id}`);
-      if (!res.ok) throw new Error('Failed to load recipe');
-      setSelectedRecipe(await res.json());
+      const { data, error: err } = await supabase
+        .from('recipes')
+        .select('*, profiles(username)')
+        .eq('id', id)
+        .single();
+      if (err) throw err;
+      setSelectedRecipe(normalizeRecipe(data));
       setView('detail');
     } catch (e) { setError(e.message); }
   };
@@ -57,38 +99,52 @@ export default function App() {
   const handleAuth = (u) => { setUser(u); setShowAuth(false); };
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await supabase.auth.signOut();
     setUser(null); setView('home');
   };
 
   const handleSaveRecipe = async (data) => {
-    const res = await fetch('/api/recipes', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
-    });
-    if (res.status === 401) { setUser(null); setShowAuth(true); throw new Error('Please sign in to save recipes'); }
-    if (!res.ok) throw new Error(await safeError(res, 'Failed to save recipe'));
-    fetchRecipes(search);
+    if (!user) { setShowAuth(true); throw new Error('Please sign in to save recipes'); }
+    const { error: err } = await supabase
+      .from('recipes')
+      .insert({ ...data, user_id: user.id });
+    if (err) throw new Error(err.message);
+    await fetchRecipes();
     setView('home');
   };
 
   const handleUpdateRecipe = async (data) => {
-    const res = await fetch(`/api/recipes/${selectedRecipe.id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
-    });
-    if (res.status === 401) { setUser(null); setShowAuth(true); throw new Error('Please sign in to edit recipes'); }
-    if (!res.ok) throw new Error(await safeError(res, 'Failed to update recipe'));
-    const updated = await res.json();
-    setSelectedRecipe(updated);
-    fetchRecipes(search);
+    if (!user) { setShowAuth(true); throw new Error('Please sign in to edit recipes'); }
+
+    // Remove the old image from storage if it was replaced
+    const oldImage = selectedRecipe.image;
+    if (oldImage && oldImage !== data.image) {
+      await supabase.storage.from('recipe-images').remove([oldImage]);
+    }
+
+    const { data: updated, error: err } = await supabase
+      .from('recipes')
+      .update(data)
+      .eq('id', selectedRecipe.id)
+      .select('*, profiles(username)')
+      .single();
+    if (err) throw new Error(err.message);
+    setSelectedRecipe(normalizeRecipe(updated));
+    await fetchRecipes();
     setView('detail');
   };
 
   const handleDeleteRecipe = async (id) => {
-    const res = await fetch(`/api/recipes/${id}`, { method: 'DELETE' });
-    if (res.status === 401) { setUser(null); setShowAuth(true); return; }
-    fetchRecipes(search);
-    setView('list');
-    setSelectedRecipe(null);
+    if (!user) { setShowAuth(true); return; }
+    if (selectedRecipe?.image) {
+      await supabase.storage.from('recipe-images').remove([selectedRecipe.image]);
+    }
+    const { error: err } = await supabase.from('recipes').delete().eq('id', id);
+    if (!err) {
+      await fetchRecipes();
+      setView('list');
+      setSelectedRecipe(null);
+    }
   };
 
   const handleSearchFromHome = (query) => {
@@ -147,6 +203,7 @@ export default function App() {
         {view === 'home' && (
           <HomePage
             user={user}
+            allRecipes={allRecipes}
             onSearch={handleSearchFromHome}
             onViewRecipe={handleSelectRecipe}
             onAddRecipe={() => setView('form')}
@@ -178,7 +235,7 @@ export default function App() {
         )}
 
         {view === 'form' && (
-          <RecipeForm onSave={handleSaveRecipe} onCancel={() => setView('home')} />
+          <RecipeForm onSave={handleSaveRecipe} onCancel={() => setView('home')} user={user} />
         )}
 
         {view === 'edit' && selectedRecipe && (
@@ -186,6 +243,7 @@ export default function App() {
             initialRecipe={selectedRecipe}
             onSave={handleUpdateRecipe}
             onCancel={() => setView('detail')}
+            user={user}
           />
         )}
       </main>
@@ -197,11 +255,10 @@ export default function App() {
       </footer>
 
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={handleAuth} />}
-      {resetToken && (
+      {showReset && (
         <ResetPasswordModal
-          token={resetToken}
-          onClose={() => setResetToken(null)}
-          onDone={() => { setResetToken(null); setShowAuth(true); }}
+          onClose={() => setShowReset(false)}
+          onDone={() => setShowReset(false)}
         />
       )}
     </div>

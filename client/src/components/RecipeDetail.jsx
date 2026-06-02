@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { REQUIRED_CATEGORIES } from '../data/categories';
+import { getImageUrl } from '../lib/supabase';
 
 function formatIngredient(ing) {
   if (typeof ing === 'string') return ing;
@@ -16,7 +17,7 @@ export default function RecipeDetail({ recipe, onDelete, onEdit, user }) {
       {recipe.description && <p className="description">{recipe.description}</p>}
       {recipe.image && (
         <div className="recipe-image">
-          <img src={`/uploads/${recipe.image}`} alt={recipe.name} />
+          <img src={getImageUrl(recipe.image)} alt={recipe.name} />
         </div>
       )}
       {recipe.categories?.length > 0 && (

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import ComboBox from './ComboBox';
 import CategoryPicker from './CategoryPicker';
 import { UNITS } from '../data/units';
+import { supabase, getImageUrl } from '../lib/supabase';
 
 const emptyIngredient = () => ({ amount: '', unit: '', item: '' });
 
@@ -10,12 +11,12 @@ function normalizeIngredient(ing) {
   return ing;
 }
 
-export default function RecipeForm({ onSave, onCancel, initialRecipe }) {
+export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
   const [name, setName] = useState(initialRecipe?.name ?? '');
   const [description, setDescription] = useState(initialRecipe?.description ?? '');
   const [categories, setCategories] = useState(initialRecipe?.categories ?? []);
   const [imageFilename, setImageFilename] = useState(initialRecipe?.image ?? null);
-  const [imagePreview, setImagePreview] = useState(initialRecipe?.image ? `/uploads/${initialRecipe.image}` : null);
+  const [imagePreview, setImagePreview] = useState(initialRecipe?.image ? getImageUrl(initialRecipe.image) : null);
   const [imageUploading, setImageUploading] = useState(false);
   const [imageError, setImageError] = useState('');
   const [ingredients, setIngredients] = useState(
@@ -31,9 +32,21 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch('/api/ingredient-items').then(r => r.json()).then(setPastItems).catch(() => {});
-    fetch('/api/categories').then(r => r.json()).then(setPastCategories).catch(() => {});
-    fetch('/api/kitchen-tools').then(r => r.json()).then(setPastTools).catch(() => {});
+    supabase.from('recipes').select('ingredients, categories, tools').then(({ data }) => {
+      if (!data) return;
+      const items = new Set(), cats = new Set(), tools = new Set();
+      data.forEach(r => {
+        (r.ingredients || []).forEach(ing => {
+          const item = typeof ing === 'string' ? ing.trim() : ing.item?.trim();
+          if (item) items.add(item);
+        });
+        (r.categories || []).forEach(c => cats.add(c));
+        (r.tools || []).forEach(t => tools.add(t));
+      });
+      setPastItems([...items].sort((a, b) => a.localeCompare(b)));
+      setPastCategories([...cats].sort((a, b) => a.localeCompare(b)));
+      setPastTools([...tools].sort((a, b) => a.localeCompare(b)));
+    });
   }, []);
 
   const addTool = () => {
@@ -52,12 +65,13 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe }) {
     setImageError('');
     setImageUploading(true);
     try {
-      const form = new FormData();
-      form.append('image', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: form });
-      if (!res.ok) { const b = await res.json(); throw new Error(b.error || 'Upload failed'); }
-      const { filename } = await res.json();
-      setImageFilename(filename);
+      const ext = file.name.split('.').pop().toLowerCase();
+      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from('recipe-images')
+        .upload(path, file, { cacheControl: '3600', upsert: false });
+      if (uploadErr) throw uploadErr;
+      setImageFilename(path);
     } catch (err) {
       setImageError(err.message);
       setImagePreview(null);

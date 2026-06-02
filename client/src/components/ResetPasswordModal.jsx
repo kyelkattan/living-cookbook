@@ -1,20 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { supabase } from '../lib/supabase';
 
-export default function ResetPasswordModal({ token, onClose, onDone }) {
-  const [status, setStatus] = useState('validating'); // 'validating' | 'form' | 'success' | 'invalid'
+export default function ResetPasswordModal({ onClose, onDone }) {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/auth/validate-reset-token/${token}`)
-      .then(r => {
-        if (r.ok) setStatus('form');
-        else return r.json().then(b => { setError(b.error); setStatus('invalid'); });
-      })
-      .catch(() => { setError('Could not verify reset link. Please try again.'); setStatus('invalid'); });
-  }, [token]);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,13 +14,9 @@ export default function ResetPasswordModal({ token, onClose, onDone }) {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password }),
-      });
-      if (!res.ok) { const b = await res.json(); throw new Error(b.error); }
-      setStatus('success');
+      const { error: err } = await supabase.auth.updateUser({ password });
+      if (err) throw err;
+      setSuccess(true);
     } catch (err) {
       setError(err.message);
       setLoading(false);
@@ -43,29 +31,14 @@ export default function ResetPasswordModal({ token, onClose, onDone }) {
           <button className="modal-close" onClick={onClose} aria-label="Close">&times;</button>
         </div>
 
-        {status === 'validating' && (
-          <p style={{ color: 'var(--text-muted)' }}>Verifying reset link…</p>
-        )}
-
-        {status === 'invalid' && (
-          <>
-            <p className="form-error" style={{ marginBottom: '1.5rem' }}>
-              {error || 'This reset link is invalid or has expired.'}
-            </p>
-            <button className="btn btn-ghost btn-full" onClick={onClose}>Close</button>
-          </>
-        )}
-
-        {status === 'success' && (
+        {success ? (
           <>
             <p style={{ marginBottom: '1.5rem', lineHeight: 1.6 }}>
-              Your password has been updated. You can now sign in with your new password.
+              Your password has been updated. You can now use your new password.
             </p>
-            <button className="btn btn-primary btn-full" onClick={onDone}>Sign In</button>
+            <button className="btn btn-primary btn-full" onClick={onDone}>Continue</button>
           </>
-        )}
-
-        {status === 'form' && (
+        ) : (
           <form onSubmit={handleSubmit}>
             {error && <p className="form-error">{error}</p>}
 

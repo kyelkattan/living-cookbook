@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import PixelChef from './PixelChef';
 import { getFoodArt } from '../utils/foodArt';
+import { supabase, getImageUrl } from '../lib/supabase';
 
 const RAINBOW = ['#cc2222', '#cc7700', '#c8aa00', '#22aa44', '#2266cc', '#aa22cc', '#cc2288'];
 
@@ -42,25 +43,29 @@ function highlightMatch(text, query) {
   );
 }
 
-export default function HomePage({ user, onSearch, onViewRecipe, onAddRecipe }) {
+export default function HomePage({ user, allRecipes, onSearch, onViewRecipe, onAddRecipe }) {
   const [query, setQuery] = useState('');
   const [featured, setFeatured] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [allRecipes, setAllRecipes] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(-1);
   const inputRef = useRef(null);
 
   useEffect(() => {
-    fetch('/api/recipes/featured')
-      .then(r => r.json())
-      .then(data => { setFeatured(data); setLoading(false); })
+    supabase
+      .from('recipes')
+      .select('id, name, description, categories, image, profiles(username)')
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (!data) { setLoading(false); return; }
+        const normalized = data.map(r => ({ ...r, user_username: r.profiles?.username || '' }));
+        const withImg = normalized.filter(r => r.image).sort(() => Math.random() - 0.5);
+        const noImg = normalized.filter(r => !r.image).sort(() => Math.random() - 0.5);
+        setFeatured([...withImg, ...noImg].slice(0, 3));
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
-
-    fetch('/api/recipes')
-      .then(r => r.json())
-      .then(data => setAllRecipes(data))
-      .catch(() => {});
   }, []);
 
   const suggestions = query.trim().length > 0
@@ -199,7 +204,7 @@ export default function HomePage({ user, onSearch, onViewRecipe, onAddRecipe }) 
                   {recipe.image ? (
                     <img
                       className="featured-img"
-                      src={`/uploads/${recipe.image}`}
+                      src={getImageUrl(recipe.image)}
                       alt={recipe.name}
                     />
                   ) : (

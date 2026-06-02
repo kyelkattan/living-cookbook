@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 export default function AuthModal({ onClose, onAuth }) {
   const [mode, setMode] = useState('login'); // 'login' | 'register' | 'forgot'
@@ -21,27 +22,54 @@ export default function AuthModal({ onClose, onAuth }) {
     setLoading(true);
     try {
       if (mode === 'forgot') {
-        const res = await fetch('/api/auth/forgot-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email }),
+        const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/`,
         });
-        if (!res.ok) { const b = await res.json(); throw new Error(b.error); }
+        if (err) throw err;
         setForgotSent(true);
         setLoading(false);
         return;
       }
 
-      const body = mode === 'register'
-        ? { email, password, username }
-        : { email, password };
-      const res = await fetch(`/api/auth/${mode}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+      if (mode === 'register') {
+        if (!username.match(/^[a-zA-Z0-9_]{2,20}$/)) {
+          throw new Error('Username must be 2–20 characters: letters, numbers, and underscores only');
+        }
+
+        // Soft uniqueness check before signUp
+        const { data: existing } = await supabase
+          .from('profiles')
+          .select('username')
+          .ilike('username', username)
+          .maybeSingle();
+        if (existing) throw new Error('That username is already taken');
+
+        const { data, error: signUpErr } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { username } },
+        });
+        if (signUpErr) throw signUpErr;
+
+        if (data.user && data.session) {
+          // Email confirmation is disabled — user is immediately active
+          onAuth({ id: data.user.id, email: data.user.email, username });
+        } else {
+          // Email confirmation is enabled — ask them to check inbox
+          setError('Account created! Check your email to confirm your address, then sign in.');
+          setLoading(false);
+        }
+        return;
+      }
+
+      // login
+      const { data, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInErr) throw signInErr;
+      onAuth({
+        id: data.user.id,
+        email: data.user.email,
+        username: data.user.user_metadata?.username || '',
       });
-      if (!res.ok) { const b = await res.json(); throw new Error(b.error || 'Something went wrong'); }
-      onAuth(await res.json());
     } catch (err) {
       setError(err.message);
       setLoading(false);
