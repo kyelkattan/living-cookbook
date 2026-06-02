@@ -65,6 +65,19 @@ export default function RecipeDetail({ recipe, onDelete, onEdit, user }) {
         </ol>
       </section>
 
+      {recipe.origin && (
+        <section className="recipe-section">
+          <h2>Recipe Origin</h2>
+          <p className="recipe-origin">
+            {recipe.origin.startsWith('http://') || recipe.origin.startsWith('https://') ? (
+              <a href={recipe.origin} target="_blank" rel="noopener noreferrer">{recipe.origin}</a>
+            ) : (
+              recipe.origin
+            )}
+          </p>
+        </section>
+      )}
+
       {isOwner && (
         <div className="recipe-actions">
           {confirming ? (

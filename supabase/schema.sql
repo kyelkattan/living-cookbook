@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS public.recipes (
   ingredients JSONB   NOT NULL DEFAULT '[]',
   steps       TEXT[]  NOT NULL DEFAULT '{}',
   tools       TEXT[]  NOT NULL DEFAULT '{}',
+  origin      TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
@@ -91,6 +92,10 @@ CREATE POLICY "images_delete_own" ON storage.objects
     bucket_id = 'recipe-images'
     AND (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- ── Migration helpers ────────────────────────────────────────────────────────
+-- If the recipes table already exists, run this to add the origin column:
+-- ALTER TABLE public.recipes ADD COLUMN IF NOT EXISTS origin TEXT;
 
 -- ── Notes ─────────────────────────────────────────────────────────────────────
 -- In Supabase Dashboard → Authentication → Settings:

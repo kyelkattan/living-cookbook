@@ -25,6 +25,7 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
   const [steps, setSteps] = useState(initialRecipe?.steps ?? ['', '', '']);
   const [tools, setTools] = useState(initialRecipe?.tools ?? []);
   const [toolInput, setToolInput] = useState('');
+  const [origin, setOrigin] = useState(initialRecipe?.origin ?? '');
   const [pastItems, setPastItems] = useState([]);
   const [pastCategories, setPastCategories] = useState([]);
   const [pastTools, setPastTools] = useState([]);
@@ -108,7 +109,7 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
 
     setSaving(true);
     try {
-      await onSave({ name, description, categories, image: imageFilename, ingredients: cleanIngredients, steps: cleanSteps, tools });
+      await onSave({ name, description, categories, image: imageFilename, ingredients: cleanIngredients, steps: cleanSteps, tools, origin: origin.trim() || null });
     } catch (e) {
       setError(e.message);
       setSaving(false);
@@ -269,6 +270,18 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
         <button type="button" className="add-row-btn" onClick={() => setSteps(p => [...p, ''])}>
           + Add step
         </button>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="origin">Recipe Origin <span className="label-optional">(optional)</span></label>
+        <input
+          id="origin"
+          className="form-input"
+          type="text"
+          placeholder="e.g. Joy of Cooking, p. 212 — or https://example.com/recipe"
+          value={origin}
+          onChange={e => setOrigin(e.target.value)}
+        />
       </div>
 
       <div className="form-actions">
