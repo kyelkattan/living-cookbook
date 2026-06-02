@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from './lib/supabase';
-import SearchBar from './components/SearchBar';
+import RecipeFilters from './components/RecipeFilters';
 import RecipeList from './components/RecipeList';
 import RecipeDetail from './components/RecipeDetail';
 import RecipeForm from './components/RecipeForm';
@@ -22,6 +22,8 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
   const [showReset, setShowReset] = useState(false);
+  const [filterTags, setFilterTags] = useState([]);
+  const [filterUser, setFilterUser] = useState('');
 
   // Auth state — listen for session + handle password recovery links
   useEffect(() => {
@@ -70,18 +72,43 @@ export default function App() {
 
   useEffect(() => { fetchRecipes(); }, [fetchRecipes]);
 
-  // Client-side search filter over the cached list
+  // All unique tags and users for the filter panel
+  const availableTags = useMemo(() =>
+    [...new Set(allRecipes.flatMap(r => r.categories || []))].sort((a, b) => a.localeCompare(b)),
+    [allRecipes]
+  );
+  const availableUsers = useMemo(() =>
+    [...new Set(allRecipes.map(r => r.user_username).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [allRecipes]
+  );
+
+  // Client-side filtering: broad text search AND tag filter AND user filter
   const recipes = useMemo(() => {
-    if (!search) return allRecipes;
-    const term = search.toLowerCase();
-    return allRecipes.filter(r =>
-      r.name.toLowerCase().includes(term) ||
-      (r.description || '').toLowerCase().includes(term) ||
-      (r.user_username || '').toLowerCase().includes(term) ||
-      (r.categories || []).some(c => c.toLowerCase().includes(term)) ||
-      (r.tools || []).some(t => t.toLowerCase().includes(term))
-    );
-  }, [allRecipes, search]);
+    let filtered = allRecipes;
+
+    if (search) {
+      const term = search.toLowerCase();
+      filtered = filtered.filter(r =>
+        r.name.toLowerCase().includes(term) ||
+        (r.description || '').toLowerCase().includes(term) ||
+        (r.user_username || '').toLowerCase().includes(term) ||
+        (r.categories || []).some(c => c.toLowerCase().includes(term)) ||
+        (r.tools || []).some(t => t.toLowerCase().includes(term))
+      );
+    }
+    if (filterTags.length > 0) {
+      filtered = filtered.filter(r =>
+        filterTags.every(tag => (r.categories || []).includes(tag))
+      );
+    }
+    if (filterUser) {
+      filtered = filtered.filter(r =>
+        (r.user_username || '').toLowerCase().includes(filterUser.toLowerCase())
+      );
+    }
+
+    return filtered;
+  }, [allRecipes, search, filterTags, filterUser]);
 
   const handleSelectRecipe = async (id) => {
     try {
@@ -213,7 +240,12 @@ export default function App() {
         {view === 'list' && (
           <>
             <div className="page-section-title">// RECIPE ARCHIVE //</div>
-            <SearchBar value={search} onChange={setSearch} />
+            <RecipeFilters
+              search={search} onSearchChange={setSearch}
+              selectedTags={filterTags} onTagsChange={setFilterTags}
+              selectedUser={filterUser} onUserChange={setFilterUser}
+              availableTags={availableTags} availableUsers={availableUsers}
+            />
             {error && <p className="error">{error}</p>}
             {!user && (
               <p className="guest-notice">
@@ -221,7 +253,10 @@ export default function App() {
                 {' '}to add, edit, or delete recipes.
               </p>
             )}
-            <RecipeList recipes={recipes} loading={loading} onSelect={handleSelectRecipe} search={search} />
+            <RecipeList
+              recipes={recipes} loading={loading} onSelect={handleSelectRecipe}
+              hasFilters={!!(search || filterTags.length > 0 || filterUser)}
+            />
           </>
         )}
 

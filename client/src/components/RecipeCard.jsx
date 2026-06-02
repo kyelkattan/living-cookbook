@@ -1,5 +1,6 @@
 import { REQUIRED_CATEGORIES } from '../data/categories';
 import { getFoodArt } from '../utils/foodArt';
+import { getImageUrl } from '../lib/supabase';
 
 export default function RecipeCard({ recipe, onSelect }) {
   const date = new Date(recipe.created_at).toLocaleDateString('en-US', {
@@ -12,7 +13,7 @@ export default function RecipeCard({ recipe, onSelect }) {
       onKeyDown={e => e.key === 'Enter' && onSelect(recipe.id)}>
       {recipe.image ? (
         <div className="card-image">
-          <img src={`/uploads/${recipe.image}`} alt={recipe.name} />
+          <img src={getImageUrl(recipe.image)} alt={recipe.name} />
         </div>
       ) : (
         <div className="card-ascii">

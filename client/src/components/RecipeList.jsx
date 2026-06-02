@@ -1,13 +1,13 @@
 import RecipeCard from './RecipeCard';
 
-export default function RecipeList({ recipes, loading, onSelect, search }) {
+export default function RecipeList({ recipes, loading, onSelect, hasFilters }) {
   if (loading) return <p className="loading">Loading recipes...</p>;
 
   if (!recipes.length) {
     return (
       <div className="empty-state">
-        <strong>{search ? 'No recipes match your search.' : 'No recipes yet.'}</strong>
-        <p>{search ? 'Try a different name, ingredient, tag, tool, or username.' : 'Add your first recipe to get started!'}</p>
+        <strong>{hasFilters ? 'No recipes match your filters.' : 'No recipes yet.'}</strong>
+        <p>{hasFilters ? 'Try adjusting or clearing your filters.' : 'Add your first recipe to get started!'}</p>
       </div>
     );
   }
