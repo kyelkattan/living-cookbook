@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import ComboBox from './ComboBox';
 import CategoryPicker from './CategoryPicker';
 import { UNITS } from '../data/units';
+import { REQUIRED_CATEGORIES, STANDARD_CATEGORIES } from '../data/categories';
 import { supabase, getImageUrl } from '../lib/supabase';
 
 const emptyIngredient = () => ({ amount: '', unit: '', item: '' });
@@ -26,6 +27,7 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
   const [tools, setTools] = useState(initialRecipe?.tools ?? []);
   const [toolInput, setToolInput] = useState('');
   const [origin, setOrigin] = useState(initialRecipe?.origin ?? '');
+  const [promotedCategories, setPromotedCategories] = useState([]);
   const [pastItems, setPastItems] = useState([]);
   const [pastCategories, setPastCategories] = useState([]);
   const [pastTools, setPastTools] = useState([]);
@@ -33,20 +35,31 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    const ALL_BUILTIN = new Set([...REQUIRED_CATEGORIES, ...STANDARD_CATEGORIES]);
     supabase.from('recipes').select('ingredients, categories, tools').then(({ data }) => {
       if (!data) return;
       const items = new Set(), cats = new Set(), tools = new Set();
+      const catCounts = {};
       data.forEach(r => {
         (r.ingredients || []).forEach(ing => {
           const item = typeof ing === 'string' ? ing.trim() : ing.item?.trim();
           if (item) items.add(item);
         });
-        (r.categories || []).forEach(c => cats.add(c));
+        (r.categories || []).forEach(c => {
+          cats.add(c);
+          if (!ALL_BUILTIN.has(c)) catCounts[c] = (catCounts[c] || 0) + 1;
+        });
         (r.tools || []).forEach(t => tools.add(t));
       });
       setPastItems([...items].sort((a, b) => a.localeCompare(b)));
       setPastCategories([...cats].sort((a, b) => a.localeCompare(b)));
       setPastTools([...tools].sort((a, b) => a.localeCompare(b)));
+      setPromotedCategories(
+        Object.entries(catCounts)
+          .filter(([, count]) => count > 5)
+          .map(([cat]) => cat)
+          .sort((a, b) => a.localeCompare(b))
+      );
     });
   }, []);
 
@@ -167,7 +180,7 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
 
       <div className="form-group">
         <label>Categories *</label>
-        <CategoryPicker value={categories} onChange={setCategories} pastCustom={pastCategories} />
+        <CategoryPicker value={categories} onChange={setCategories} pastCustom={pastCategories} promoted={promotedCategories} />
       </div>
 
       <div className="form-group">

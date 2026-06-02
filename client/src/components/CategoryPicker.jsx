@@ -3,7 +3,6 @@ import { REQUIRED_CATEGORIES, STANDARD_CATEGORIES } from '../data/categories';
 
 const ALL_BUILTIN = new Set([...REQUIRED_CATEGORIES, ...STANDARD_CATEGORIES]);
 
-// Inline combobox that clears itself after committing a selection
 function CustomCategoryInput({ onAdd, suggestions }) {
   const [val, setVal] = useState('');
   const [open, setOpen] = useState(false);
@@ -48,7 +47,9 @@ function CustomCategoryInput({ onAdd, suggestions }) {
   );
 }
 
-export default function CategoryPicker({ value, onChange, pastCustom = [] }) {
+export default function CategoryPicker({ value, onChange, pastCustom = [], promoted = [] }) {
+  const ALL_PROMOTED = new Set(promoted);
+
   const toggle = (cat) =>
     onChange(value.includes(cat) ? value.filter(c => c !== cat) : [...value, cat]);
 
@@ -56,8 +57,11 @@ export default function CategoryPicker({ value, onChange, pastCustom = [] }) {
     if (!value.includes(cat)) onChange([...value, cat]);
   };
 
-  const selectedCustom = value.filter(c => !ALL_BUILTIN.has(c));
-  const customSuggestions = pastCustom.filter(c => !ALL_BUILTIN.has(c) && !value.includes(c));
+  // Custom = not builtin AND not promoted
+  const selectedCustom = value.filter(c => !ALL_BUILTIN.has(c) && !ALL_PROMOTED.has(c));
+  const customSuggestions = pastCustom.filter(
+    c => !ALL_BUILTIN.has(c) && !ALL_PROMOTED.has(c) && !value.includes(c)
+  );
 
   return (
     <div className="category-picker">
@@ -81,6 +85,13 @@ export default function CategoryPicker({ value, onChange, pastCustom = [] }) {
         <span className="category-group-label">Tags</span>
         <div className="chips">
           {STANDARD_CATEGORIES.map(cat => (
+            <button key={cat} type="button"
+              className={`chip${value.includes(cat) ? ' chip-active' : ''}`}
+              onClick={() => toggle(cat)}>
+              {cat}
+            </button>
+          ))}
+          {promoted.map(cat => (
             <button key={cat} type="button"
               className={`chip${value.includes(cat) ? ' chip-active' : ''}`}
               onClick={() => toggle(cat)}>
