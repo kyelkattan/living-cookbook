@@ -166,7 +166,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div className="header-marquee">
-          ✦ THE LIVING COOKBOOK ✦ CLASSIC RECIPES FROM THE HEART ✦ EST. 1999 ✦ WELCOME, {user ? user.email.toUpperCase() : 'GUEST'} ✦
+          ✦ THE LIVING COOKBOOK ✦ CLASSIC RECIPES FROM THE HEART ✦ EST. 1966 ✦ WELCOME, {user ? user.email.toUpperCase() : 'GUEST'} ✦
         </div>
         <div className="header-nav">
           <div className="header-left">
@@ -249,9 +249,9 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        <div>© 1999–{year} THE LIVING COOKBOOK — ALL RIGHTS RESERVED</div>
+        <div>© 1966–{year} THE LIVING COOKBOOK — ALL RIGHTS RESERVED</div>
         <div>ALL RECIPES ARE PROPERTY OF THEIR RESPECTIVE AUTHORS</div>
-        <div>BEST VIEWED IN 800×600 — NETSCAPE NAVIGATOR 4.0+</div>
+
       </footer>
 
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={handleAuth} />}

@@ -132,7 +132,7 @@ export default function HomePage({ user, allRecipes, onSearch, onViewRecipe, onA
               <div className="book-title">
                 <RainbowText text={'LIVING\nCOOKBOOK'} />
               </div>
-              <div className="book-subtitle">✦ EST. 1999 — CLASSIC RECIPES FROM THE HEART ✦</div>
+              <div className="book-subtitle">✦ EST. 1966 — CLASSIC RECIPES FROM THE HEART ✦</div>
             </div>
 
             <div className="book-chef-area">
