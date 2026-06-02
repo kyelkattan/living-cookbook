@@ -128,11 +128,9 @@ export default function App() {
           </div>
 
           <div className="header-right">
-            {user && view === 'home' && (
-              <button className="btn btn-primary" onClick={() => setView('form')}>
-                + ADD RECIPE
-              </button>
-            )}
+            <button className="btn btn-primary" onClick={() => user ? setView('form') : setShowAuth(true)}>
+              + ADD RECIPE
+            </button>
             {user ? (
               <>
                 <span className="header-user-email">[{user.email}]</span>

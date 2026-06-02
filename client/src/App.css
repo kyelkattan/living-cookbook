@@ -1001,13 +1001,56 @@ button.chip-active:hover { background: #4a2010 !important; border-color: #4a2010
 
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 680px) {
-  .book-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 8px auto;
+  /* ── Layout ── */
+  .app-main { padding: 1rem; }
+  .home-page { gap: 1.5rem; padding-top: 0.5rem; }
+
+  /* ── Header ── */
+  .header-marquee { font-size: 0.32rem; letter-spacing: 1px; }
+  .header-nav { padding: 6px 1rem; gap: 0.5rem; }
+  .header-user-email { max-width: 120px; font-size: 0.85rem; }
+
+  /* ── Book: single left page only ── */
+  .book-grid { grid-template-columns: 1fr; }
+  .book-spine { display: none; }
+  .book-right { display: none; }
+  .book-left  { min-height: auto; background: #f5e4be; }
+
+  /* Flatten the 3D box-shadow stack — pseudo-elements still show */
+  .book-outer {
+    box-shadow:
+      -4px 3px 0 #4a2010,
+      -6px 5px 0 #2c1208,
+      4px  3px 0 #f2e4c6,
+      6px  5px 0 #e0ceaa,
+      0 12px 24px rgba(0,0,0,0.3);
   }
-  .book-spine { height: 8px; width: 100%; }
-  .book-left  { min-height: auto; }
+
+  /* Footer: drop the spine-strip gradient, use flat left-page colour */
+  .book-footer {
+    background: #ecdfc0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  /* Bookmark sits just right of centre on the single page */
+  .book-bookmark { left: calc(50% + 20px); }
+
+  /* ── Typography ── */
   .book-title { font-size: 1.1rem; }
-  .recipe-grid { grid-template-columns: 1fr; }
   .book-search-input { font-size: 1rem; }
+  .recipe-form h1 { font-size: 0.65rem; }
+  .recipe-detail h1 { font-size: 0.7rem; }
+  .page-section-title { font-size: 0.5rem; }
+
+  /* ── Recipe grid ── */
+  .recipe-grid { grid-template-columns: 1fr; }
+
+  /* ── Ingredient form row: tighten Qty column ── */
+  .ingredient-col-headers { grid-template-columns: 56px 1fr 2fr; }
+  .ingredient-row         { grid-template-columns: 56px 1fr 2fr auto; }
+
+  /* ── Modals ── */
+  .modal { padding: 1.25rem; }
 }

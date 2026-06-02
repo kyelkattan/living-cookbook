@@ -7,7 +7,7 @@ export default function RecipeList({ recipes, loading, onSelect, search }) {
     return (
       <div className="empty-state">
         <strong>{search ? 'No recipes match your search.' : 'No recipes yet.'}</strong>
-        <p>{search ? 'Try a different ingredient or name.' : 'Add your first recipe to get started!'}</p>
+        <p>{search ? 'Try a different name, ingredient, tag, tool, or username.' : 'Add your first recipe to get started!'}</p>
       </div>
     );
   }

@@ -4,7 +4,7 @@ export default function SearchBar({ value, onChange }) {
       <input
         className="search-input"
         type="search"
-        placeholder="Search recipes by name or ingredient..."
+        placeholder="Search by name, ingredient, tag, tool, or user..."
         value={value}
         onChange={e => onChange(e.target.value)}
       />

@@ -18,6 +18,17 @@ function RainbowText({ text }) {
   );
 }
 
+function getMatchHint(recipe, query) {
+  const q = query.toLowerCase();
+  if ((recipe.user_username || '').toLowerCase().includes(q))
+    return `by ${recipe.user_username}`;
+  const cat = (recipe.categories || []).find(c => c.toLowerCase().includes(q));
+  if (cat) return `tag: ${cat}`;
+  const tool = (recipe.tools || []).find(t => t.toLowerCase().includes(q));
+  if (tool) return `tool: ${tool}`;
+  return (recipe.categories || []).slice(0, 2).join(' · ');
+}
+
 function highlightMatch(text, query) {
   if (!query) return text;
   const idx = text.toLowerCase().indexOf(query.toLowerCase());
@@ -54,10 +65,15 @@ export default function HomePage({ user, onSearch, onViewRecipe, onAddRecipe }) 
 
   const suggestions = query.trim().length > 0
     ? allRecipes
-        .filter(r =>
-          r.name.toLowerCase().includes(query.toLowerCase()) ||
-          (r.categories || []).some(c => c.toLowerCase().includes(query.toLowerCase()))
-        )
+        .filter(r => {
+          const q = query.toLowerCase();
+          return (
+            r.name.toLowerCase().includes(q) ||
+            (r.user_username || '').toLowerCase().includes(q) ||
+            (r.categories || []).some(c => c.toLowerCase().includes(q)) ||
+            (r.tools || []).some(t => t.toLowerCase().includes(q))
+          );
+        })
         .slice(0, 6)
     : [];
 
@@ -127,7 +143,7 @@ export default function HomePage({ user, onSearch, onViewRecipe, onAddRecipe }) 
                     ref={inputRef}
                     className="book-search-input"
                     type="text"
-                    placeholder="type a dish and press enter..."
+                    placeholder="name, tag, tool, or user..."
                     value={query}
                     onChange={handleQueryChange}
                     onFocus={() => query.trim() && setShowSuggestions(true)}
@@ -148,11 +164,9 @@ export default function HomePage({ user, onSearch, onViewRecipe, onAddRecipe }) 
                         <span className="suggestion-name">
                           {highlightMatch(recipe.name, query)}
                         </span>
-                        {recipe.categories?.length > 0 && (
-                          <span className="suggestion-cats">
-                            {recipe.categories.slice(0, 2).join(' · ')}
-                          </span>
-                        )}
+                        <span className="suggestion-cats">
+                          {getMatchHint(recipe, query)}
+                        </span>
                       </li>
                     ))}
                   </ul>

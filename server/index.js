@@ -268,8 +268,10 @@ app.get('/api/recipes', (req, res) => {
     recipes = recipes.filter(r =>
       r.name.toLowerCase().includes(term) ||
       r.description.toLowerCase().includes(term) ||
+      (r.user_username || '').toLowerCase().includes(term) ||
       (r.ingredients || []).some(i => ingredientText(i).toLowerCase().includes(term)) ||
-      (r.categories || []).some(c => c.toLowerCase().includes(term))
+      (r.categories || []).some(c => c.toLowerCase().includes(term)) ||
+      (r.tools || []).some(t => t.toLowerCase().includes(term))
     );
   }
 
