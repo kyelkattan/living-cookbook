@@ -4,6 +4,7 @@ import RecipeList from './components/RecipeList';
 import RecipeDetail from './components/RecipeDetail';
 import RecipeForm from './components/RecipeForm';
 import AuthModal from './components/AuthModal';
+import ResetPasswordModal from './components/ResetPasswordModal';
 
 async function safeError(res, fallback) {
   try {
@@ -23,13 +24,21 @@ export default function App() {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
+  const [resetToken, setResetToken] = useState(null);
 
-  // Restore session on page load
+  // Restore session and detect reset-password links on page load
   useEffect(() => {
     fetch('/api/auth/me')
       .then(r => r.json())
       .then(u => setUser(u))
       .catch(() => {});
+
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('reset');
+    if (token) {
+      setResetToken(token);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   const fetchRecipes = useCallback(async (query = '') => {
@@ -170,6 +179,14 @@ export default function App() {
       </main>
 
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={handleAuth} />}
+
+      {resetToken && (
+        <ResetPasswordModal
+          token={resetToken}
+          onClose={() => setResetToken(null)}
+          onDone={() => { setResetToken(null); setShowAuth(true); }}
+        />
+      )}
     </div>
   );
 }

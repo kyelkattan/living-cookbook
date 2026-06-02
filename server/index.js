@@ -3,6 +3,8 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 const { read, write } = require('./db');
 
 const app = express();
@@ -11,6 +13,33 @@ const JWT_SECRET = process.env.JWT_SECRET || 'living-cookbook-dev-secret-change-
 
 if (!process.env.JWT_SECRET) {
   console.warn('Warning: JWT_SECRET env var not set — using insecure default. Set it before deploying.');
+}
+
+// ── Email ─────────────────────────────────────────────────────────────────────
+
+const APP_URL = process.env.APP_URL || 'http://localhost:5173';
+
+const mailer = process.env.EMAIL_HOST
+  ? nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: Number(process.env.EMAIL_PORT) || 587,
+      secure: Number(process.env.EMAIL_PORT) === 465,
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+    })
+  : null;
+
+async function sendResetEmail(to, resetUrl) {
+  if (!mailer) {
+    console.log(`\n[DEV] Password reset link for ${to}:\n${resetUrl}\n`);
+    return;
+  }
+  await mailer.sendMail({
+    from: process.env.EMAIL_FROM || 'Living Cookbook <noreply@example.com>',
+    to,
+    subject: 'Reset your Living Cookbook password',
+    text: `You requested a password reset.\n\nClick the link below to set a new password. This link expires in 1 hour.\n\n${resetUrl}\n\nIf you didn't request this, ignore this email.`,
+    html: `<p>You requested a password reset for your Living Cookbook account.</p><p>Click the link below to set a new password. <strong>This link expires in 1 hour.</strong></p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, ignore this email.</p>`,
+  });
 }
 
 app.use(cors());
@@ -111,6 +140,70 @@ app.post('/api/auth/login', async (req, res, next) => {
 app.post('/api/auth/logout', (req, res) => {
   res.clearCookie('token', { httpOnly: true, sameSite: 'lax' });
   res.json({ ok: true });
+});
+
+app.post('/api/auth/forgot-password', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const db = read();
+    const user = db.users.find(u => u.email === email.toLowerCase().trim());
+
+    // Always respond with success — never reveal whether an email exists
+    if (!user) return res.json({ ok: true });
+
+    // Remove old tokens for this user and expired tokens (lazy cleanup)
+    db.resetTokens = db.resetTokens.filter(
+      t => t.userId !== user.id && new Date(t.expiresAt) > new Date()
+    );
+
+    const token = crypto.randomBytes(32).toString('hex');
+    db.resetTokens.push({ token, userId: user.id, expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString() });
+    write(db);
+
+    await sendResetEmail(user.email, `${APP_URL}?reset=${token}`);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+app.get('/api/auth/validate-reset-token/:token', (req, res) => {
+  const db = read();
+  const entry = db.resetTokens.find(t => t.token === req.params.token);
+  if (!entry || new Date(entry.expiresAt) < new Date()) {
+    return res.status(400).json({ error: 'This reset link has expired or is invalid' });
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/auth/reset-password', async (req, res, next) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Token and new password are required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    const db = read();
+    const idx = db.resetTokens.findIndex(t => t.token === token);
+
+    if (idx === -1 || new Date(db.resetTokens[idx].expiresAt) < new Date()) {
+      if (idx !== -1) { db.resetTokens.splice(idx, 1); write(db); }
+      return res.status(400).json({ error: 'This reset link has expired. Please request a new one.' });
+    }
+
+    const userIdx = db.users.findIndex(u => u.id === db.resetTokens[idx].userId);
+    if (userIdx === -1) return res.status(400).json({ error: 'Account not found' });
+
+    db.users[userIdx].passwordHash = await bcrypt.hash(password, 12);
+    db.resetTokens.splice(idx, 1); // single-use
+    write(db);
+
+    res.json({ ok: true });
+  } catch (err) { next(err); }
 });
 
 // ── Recipes ───────────────────────────────────────────────────────────────────
