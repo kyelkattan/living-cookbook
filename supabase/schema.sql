@@ -44,7 +44,7 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
 
 CREATE TABLE IF NOT EXISTS public.recipes (
   id          BIGSERIAL PRIMARY KEY,
-  user_id     UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  user_id     UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   name        TEXT    NOT NULL,
   description TEXT    NOT NULL DEFAULT '',
   categories  TEXT[]  NOT NULL DEFAULT '{}',
