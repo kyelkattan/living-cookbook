@@ -112,7 +112,7 @@ app.get('/api/auth/me', (req, res) => {
   if (!token) return res.json(null);
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    res.json({ id: payload.userId, email: payload.email });
+    res.json({ id: payload.userId, email: payload.email, username: payload.username || '' });
   } catch {
     res.json(null);
   }
@@ -120,8 +120,11 @@ app.get('/api/auth/me', (req, res) => {
 
 app.post('/api/auth/register', async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, username } = req.body;
 
+    if (!username || !username.match(/^[a-zA-Z0-9_]{2,20}$/)) {
+      return res.status(400).json({ error: 'Username must be 2–20 characters: letters, numbers, and underscores only' });
+    }
     if (!email?.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
       return res.status(400).json({ error: 'A valid email address is required' });
     }
@@ -131,19 +134,23 @@ app.post('/api/auth/register', async (req, res, next) => {
 
     const db = read();
     const normalizedEmail = email.toLowerCase().trim();
+    const normalizedUsername = username.trim();
 
+    if (db.users.find(u => u.username?.toLowerCase() === normalizedUsername.toLowerCase())) {
+      return res.status(409).json({ error: 'That username is already taken' });
+    }
     if (db.users.find(u => u.email === normalizedEmail)) {
       return res.status(409).json({ error: 'An account with this email already exists' });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = { id: db.nextUserId++, email: normalizedEmail, passwordHash, created_at: new Date().toISOString() };
+    const user = { id: db.nextUserId++, email: normalizedEmail, username: normalizedUsername, passwordHash, created_at: new Date().toISOString() };
     db.users.push(user);
     write(db);
 
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user.id, email: user.email, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
     res.cookie('token', token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
-    res.status(201).json({ id: user.id, email: user.email });
+    res.status(201).json({ id: user.id, email: user.email, username: user.username });
   } catch (err) { next(err); }
 });
 
@@ -162,9 +169,9 @@ app.post('/api/auth/login', async (req, res, next) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user.id, email: user.email, username: user.username || '' }, JWT_SECRET, { expiresIn: '7d' });
     res.cookie('token', token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
-    res.json({ id: user.id, email: user.email });
+    res.json({ id: user.id, email: user.email, username: user.username || '' });
   } catch (err) { next(err); }
 });
 
@@ -266,8 +273,18 @@ app.get('/api/recipes', (req, res) => {
     );
   }
 
-  res.json(recipes.map(({ id, name, description, created_at, user_email, categories, image }) =>
-    ({ id, name, description, created_at, user_email, categories: categories || [], image: image || null })
+  res.json(recipes.map(({ id, name, description, created_at, user_email, user_username, categories, image }) =>
+    ({ id, name, description, created_at, user_username: user_username || user_email?.split('@')[0] || '', categories: categories || [], image: image || null })
+  ));
+});
+
+app.get('/api/recipes/featured', (req, res) => {
+  const { recipes } = read();
+  const withImg = recipes.filter(r => r.image).sort(() => Math.random() - 0.5);
+  const noImg = recipes.filter(r => !r.image).sort(() => Math.random() - 0.5);
+  const featured = [...withImg, ...noImg].slice(0, 3);
+  res.json(featured.map(({ id, name, description, categories, image, user_email, user_username }) =>
+    ({ id, name, description, categories, image, user_username: user_username || user_email?.split('@')[0] || '' })
   ));
 });
 
@@ -275,7 +292,10 @@ app.get('/api/recipes/:id', (req, res) => {
   const { recipes } = read();
   const recipe = recipes.find(r => r.id === Number(req.params.id));
   if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
-  res.json(recipe);
+  res.json({
+    ...recipe,
+    user_username: recipe.user_username || recipe.user_email?.split('@')[0] || '',
+  });
 });
 
 app.get('/api/categories', (req, res) => {
@@ -283,6 +303,13 @@ app.get('/api/categories', (req, res) => {
   const cats = new Set();
   recipes.forEach(r => (r.categories || []).forEach(c => cats.add(c)));
   res.json([...cats].sort((a, b) => a.localeCompare(b)));
+});
+
+app.get('/api/kitchen-tools', (req, res) => {
+  const { recipes } = read();
+  const tools = new Set();
+  recipes.forEach(r => (r.tools || []).forEach(t => tools.add(t)));
+  res.json([...tools].sort((a, b) => a.localeCompare(b)));
 });
 
 app.get('/api/ingredient-items', (req, res) => {
@@ -298,7 +325,7 @@ app.get('/api/ingredient-items', (req, res) => {
 });
 
 app.post('/api/recipes', requireAuth, (req, res) => {
-  const { name, description, categories, image, ingredients, steps } = req.body;
+  const { name, description, categories, image, ingredients, steps, tools } = req.body;
 
   if (!name?.trim()) return res.status(400).json({ error: 'Recipe name is required' });
 
@@ -318,12 +345,14 @@ app.post('/api/recipes', requireAuth, (req, res) => {
     id: db.nextId++,
     user_id: req.user.userId,
     user_email: req.user.email,
+    user_username: req.user.username || req.user.email.split('@')[0],
     name: name.trim(),
     description: description?.trim() || '',
     categories: validCategories,
     image: image || null,
     ingredients: validIngredients,
     steps: validSteps,
+    tools: (tools || []).map(t => t.trim()).filter(Boolean),
     created_at: new Date().toISOString(),
   };
   db.recipes.unshift(recipe);
@@ -332,7 +361,7 @@ app.post('/api/recipes', requireAuth, (req, res) => {
 });
 
 app.put('/api/recipes/:id', requireAuth, (req, res) => {
-  const { name, description, categories, image, ingredients, steps } = req.body;
+  const { name, description, categories, image, ingredients, steps, tools } = req.body;
 
   if (!name?.trim()) return res.status(400).json({ error: 'Recipe name is required' });
 
@@ -358,7 +387,7 @@ app.put('/api/recipes/:id', requireAuth, (req, res) => {
   const oldImage = db.recipes[idx].image;
   if (oldImage && oldImage !== image) deleteUpload(oldImage);
 
-  db.recipes[idx] = { ...db.recipes[idx], name: name.trim(), description: description?.trim() || '', categories: validCategories, image: image || null, ingredients: validIngredients, steps: validSteps };
+  db.recipes[idx] = { ...db.recipes[idx], name: name.trim(), description: description?.trim() || '', categories: validCategories, image: image || null, ingredients: validIngredients, steps: validSteps, tools: (tools || []).map(t => t.trim()).filter(Boolean) };
   write(db);
   res.json(db.recipes[idx]);
 });

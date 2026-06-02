@@ -22,15 +22,28 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe }) {
     initialRecipe?.ingredients?.map(normalizeIngredient) ?? [emptyIngredient(), emptyIngredient(), emptyIngredient()]
   );
   const [steps, setSteps] = useState(initialRecipe?.steps ?? ['', '', '']);
+  const [tools, setTools] = useState(initialRecipe?.tools ?? []);
+  const [toolInput, setToolInput] = useState('');
   const [pastItems, setPastItems] = useState([]);
   const [pastCategories, setPastCategories] = useState([]);
+  const [pastTools, setPastTools] = useState([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch('/api/ingredient-items').then(r => r.json()).then(setPastItems).catch(() => {});
     fetch('/api/categories').then(r => r.json()).then(setPastCategories).catch(() => {});
+    fetch('/api/kitchen-tools').then(r => r.json()).then(setPastTools).catch(() => {});
   }, []);
+
+  const addTool = () => {
+    const val = toolInput.trim();
+    if (!val || tools.some(t => t.toLowerCase() === val.toLowerCase())) return;
+    setTools(prev => [...prev, val]);
+    setToolInput('');
+  };
+
+  const removeTool = (idx) => setTools(prev => prev.filter((_, i) => i !== idx));
 
   const handleImageSelect = async (e) => {
     const file = e.target.files[0];
@@ -81,7 +94,7 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe }) {
 
     setSaving(true);
     try {
-      await onSave({ name, description, categories, image: imageFilename, ingredients: cleanIngredients, steps: cleanSteps });
+      await onSave({ name, description, categories, image: imageFilename, ingredients: cleanIngredients, steps: cleanSteps, tools });
     } catch (e) {
       setError(e.message);
       setSaving(false);
@@ -182,6 +195,40 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe }) {
         <button type="button" className="add-row-btn" onClick={() => setIngredients(p => [...p, emptyIngredient()])}>
           + Add ingredient
         </button>
+      </div>
+
+      <div className="form-group">
+        <label>Kitchen Tools <span className="label-optional">(optional)</span></label>
+        <div className="tools-input-row">
+          <input
+            className="form-input"
+            type="text"
+            list="tools-suggestions"
+            placeholder="e.g. Stand mixer, Dutch oven, Wok..."
+            value={toolInput}
+            onChange={e => setToolInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTool(); } }}
+            autoComplete="off"
+          />
+          <datalist id="tools-suggestions">
+            {pastTools
+              .filter(t => !tools.some(t2 => t2.toLowerCase() === t.toLowerCase()))
+              .map(t => <option key={t} value={t} />)}
+          </datalist>
+          <button type="button" className="btn btn-ghost tools-add-btn" onClick={addTool}>
+            + Add
+          </button>
+        </div>
+        {tools.length > 0 && (
+          <div className="tools-list">
+            {tools.map((tool, i) => (
+              <div key={i} className="tool-tag">
+                <span>{tool}</span>
+                <button type="button" className="btn-icon" onClick={() => removeTool(i)} aria-label={`Remove ${tool}`}>&times;</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="form-group">

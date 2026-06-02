@@ -3,13 +3,14 @@ import { useState } from 'react';
 export default function AuthModal({ onClose, onAuth }) {
   const [mode, setMode] = useState('login'); // 'login' | 'register' | 'forgot'
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
 
-  const switchMode = (m) => { setMode(m); setError(''); setConfirm(''); setForgotSent(false); };
+  const switchMode = (m) => { setMode(m); setError(''); setConfirm(''); setUsername(''); setForgotSent(false); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,10 +32,13 @@ export default function AuthModal({ onClose, onAuth }) {
         return;
       }
 
+      const body = mode === 'register'
+        ? { email, password, username }
+        : { email, password };
       const res = await fetch(`/api/auth/${mode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) { const b = await res.json(); throw new Error(b.error || 'Something went wrong'); }
       onAuth(await res.json());
@@ -68,6 +72,25 @@ export default function AuthModal({ onClose, onAuth }) {
             {error && <p className="form-error">{error}</p>}
 
             <form onSubmit={handleSubmit}>
+              {mode === 'register' && (
+                <div className="form-group">
+                  <label htmlFor="auth-username">Username</label>
+                  <input
+                    id="auth-username"
+                    className="form-input"
+                    type="text"
+                    placeholder="letters, numbers, underscores"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    required
+                    autoFocus
+                    minLength={2}
+                    maxLength={20}
+                    pattern="[a-zA-Z0-9_]+"
+                  />
+                </div>
+              )}
+
               <div className="form-group">
                 <label htmlFor="auth-email">Email</label>
                 <input
@@ -78,7 +101,7 @@ export default function AuthModal({ onClose, onAuth }) {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
-                  autoFocus
+                  autoFocus={mode !== 'register'}
                 />
               </div>
 

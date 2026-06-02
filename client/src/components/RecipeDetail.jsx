@@ -28,8 +28,8 @@ export default function RecipeDetail({ recipe, onDelete, onEdit, user }) {
           ))}
         </div>
       )}
-      {recipe.user_email && (
-        <p className="recipe-attribution">Added by {recipe.user_email}</p>
+      {recipe.user_username && (
+        <p className="recipe-attribution">Added by {recipe.user_username}</p>
       )}
 
       <section className="recipe-section">
@@ -40,6 +40,17 @@ export default function RecipeDetail({ recipe, onDelete, onEdit, user }) {
           ))}
         </ul>
       </section>
+
+      {recipe.tools?.length > 0 && (
+        <section className="recipe-section">
+          <h2>Kitchen Tools</h2>
+          <div className="chips">
+            {recipe.tools.map((tool, i) => (
+              <span key={i} className="chip chip-tool">{tool}</span>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="recipe-section">
         <h2>Steps</h2>
