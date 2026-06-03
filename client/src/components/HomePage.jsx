@@ -58,7 +58,7 @@ export default function HomePage({ user, allRecipes, onSearch, onViewRecipe, onA
     setLoading(true);
     supabase
       .from('recipes')
-      .select('id, name, description, categories, image, visibility, profiles(username)')
+      .select('id, name, description, categories, image, visibility, profiles!user_id(username)')
       .order('created_at', { ascending: false })
       .limit(20)
       .then(({ data }) => {

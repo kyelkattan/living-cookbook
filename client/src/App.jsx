@@ -64,7 +64,7 @@ export default function App() {
     try {
       const { data, error: err } = await supabase
         .from('recipes')
-        .select('id, name, description, created_at, categories, image, tools, user_id, visibility, profiles(username)')
+        .select('id, name, description, created_at, categories, image, tools, user_id, visibility, profiles!user_id(username)')
         .order('created_at', { ascending: false });
       if (err) throw err;
       setAllRecipes((data || []).map(normalizeRecipe));
@@ -128,7 +128,7 @@ export default function App() {
     try {
       const { data, error: err } = await supabase
         .from('recipes')
-        .select('*, profiles(username)')
+        .select('*, profiles!user_id(username)')
         .eq('id', id)
         .single();
       if (err) throw err;
@@ -187,7 +187,7 @@ export default function App() {
       .from('recipes')
       .update(recipe)
       .eq('id', selectedRecipe.id)
-      .select('*, profiles(username)')
+      .select('*, profiles!user_id(username)')
       .single();
     if (err) throw new Error(err.message);
     await syncRecipeShares(selectedRecipe.id, recipe.visibility, sharedWith);
