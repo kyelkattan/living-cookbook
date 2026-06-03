@@ -21,7 +21,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 
 const DAILY_LIMIT = 10;
 const WINDOW_MS = 24 * 60 * 60 * 1000;
-const MODEL = 'claude-sonnet-4-20250514';
+const MODEL = 'claude-sonnet-4-6';
 const ALLOWED_MEDIA = ['image/jpeg', 'image/png', 'image/webp'];
 
 const CORS = {
