@@ -7,6 +7,7 @@ import RecipeForm from './components/RecipeForm';
 import AuthModal from './components/AuthModal';
 import ResetPasswordModal from './components/ResetPasswordModal';
 import HomePage from './components/HomePage';
+import AccountPage from './components/AccountPage';
 
 function normalizeRecipe(r) {
   return { ...r, user_username: r.profiles?.username || '' };
@@ -216,7 +217,13 @@ export default function App() {
             </button>
             {user ? (
               <>
-                <span className="header-user-email">[{user.email}]</span>
+                <button
+                  className="header-user-btn"
+                  onClick={() => setView('account')}
+                  title="Account settings"
+                >
+                  [{user.username || user.email}]
+                </button>
                 <button className="btn btn-ghost" onClick={handleLogout}>LOGOUT</button>
               </>
             ) : (
@@ -280,6 +287,10 @@ export default function App() {
             onCancel={() => setView('detail')}
             user={user}
           />
+        )}
+
+        {view === 'account' && user && (
+          <AccountPage user={user} onUpdateUser={setUser} />
         )}
       </main>
 

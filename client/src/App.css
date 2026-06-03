@@ -95,6 +95,24 @@ body {
   white-space: nowrap;
 }
 
+.header-user-btn {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: #3a1e08;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--dim);
+}
+.header-user-btn:hover { color: #2c1208; text-decoration-color: #2c1208; }
+
 /* ── Main ─────────────────────────────────────────────────── */
 .app-main {
   max-width: 1100px;
@@ -270,6 +288,8 @@ body {
 .add-row-btn:hover { border-color: #2c1208; color: #1a0a04; }
 
 .form-error { color: var(--danger); font-size: 0.9rem; margin-bottom: 1rem; font-family: var(--font-mono); }
+.form-success { color: #2c6e1f; font-size: 0.9rem; margin-bottom: 1rem; font-family: var(--font-mono); }
+.form-hint { color: var(--text-muted); font-size: 0.85rem; margin-top: 6px; font-family: var(--font-mono); line-height: 1.4; }
 .error { color: var(--danger); font-size: 0.9rem; margin-bottom: 1rem; }
 .form-actions { display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap; }
 
@@ -281,6 +301,25 @@ body {
   font-size: 0.78rem;
   color: #1a0a04;
   margin-bottom: 2rem;
+  line-height: 1.8;
+}
+
+/* ── Account settings page ────────────────────────────────── */
+.account-page { max-width: 560px; }
+
+.account-section {
+  background: var(--surface);
+  border: 2px solid var(--dim);
+  padding: 1.5rem;
+  margin-bottom: 1.75rem;
+  box-shadow: 3px 3px 0 rgba(50,20,5,0.18);
+}
+
+.account-section h2 {
+  font-family: var(--font-pixel);
+  font-size: 0.58rem;
+  color: #1a0a04;
+  margin-bottom: 1.75rem;
   line-height: 1.8;
 }
 
