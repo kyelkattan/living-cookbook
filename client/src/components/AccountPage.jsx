@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import FriendsManager from './FriendsManager';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{2,20}$/;
 
-export default function AccountPage({ user, onUpdateUser }) {
+export default function AccountPage({ user, onUpdateUser, onFriendsChanged }) {
   // ── Change username ──────────────────────────────────────────
   const [username, setUsername] = useState(user.username || '');
   const [usernameError, setUsernameError] = useState('');
@@ -104,6 +105,8 @@ export default function AccountPage({ user, onUpdateUser }) {
   return (
     <div className="recipe-form account-page">
       <h1>// ACCOUNT SETTINGS //</h1>
+
+      <FriendsManager onFriendsChanged={onFriendsChanged} />
 
       <section className="account-section">
         <h2>Change Username</h2>

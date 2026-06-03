@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { REQUIRED_CATEGORIES } from '../data/categories';
-import { getImageUrl } from '../lib/supabase';
+import { getImageUrl, supabase } from '../lib/supabase';
 
 function formatIngredient(ing) {
   if (typeof ing === 'string') return ing;
@@ -10,6 +10,43 @@ function formatIngredient(ing) {
 export default function RecipeDetail({ recipe, onDelete, onEdit, user }) {
   const [confirming, setConfirming] = useState(false);
   const isOwner = user && recipe.user_id === user.id;
+
+  // Friendship status with the recipe's author (only when signed in and not the
+  // owner). Uses the are_friends + send_friend_request RPCs from the backend.
+  const showFriendStatus = user && !isOwner && recipe.user_id;
+  const [areFriends, setAreFriends] = useState(null); // null = loading
+  const [requested, setRequested] = useState(false);
+  const [friendErr, setFriendErr] = useState('');
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (!showFriendStatus) return;
+    let active = true;
+    setAreFriends(null);
+    setRequested(false);
+    setFriendErr('');
+    supabase
+      .rpc('are_friends', { p_user_a: user.id, p_user_b: recipe.user_id })
+      .then(({ data, error }) => {
+        if (active && !error) setAreFriends(!!data);
+      });
+    return () => { active = false; };
+  }, [showFriendStatus, user?.id, recipe.user_id]);
+
+  const handleAddFriend = async () => {
+    setFriendErr('');
+    setSending(true);
+    try {
+      const { data, error } = await supabase.rpc('send_friend_request', { p_username: recipe.user_username });
+      if (error) throw error;
+      if (data?.status === 'accepted') setAreFriends(true); // auto-accepted an incoming request
+      else setRequested(true);
+    } catch (err) {
+      setFriendErr(err.message);
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <article className="recipe-detail">
@@ -31,6 +68,24 @@ export default function RecipeDetail({ recipe, onDelete, onEdit, user }) {
       )}
       {recipe.user_username && (
         <p className="recipe-attribution">Added by {recipe.user_username}</p>
+      )}
+
+      {showFriendStatus && areFriends !== null && (
+        <div className="recipe-friend-status">
+          {areFriends ? (
+            <span className="friend-badge-tag">✓ You are friends with {recipe.user_username}</span>
+          ) : requested ? (
+            <span className="friend-badge-tag friend-badge-pending">Friend request sent to {recipe.user_username}</span>
+          ) : (
+            <>
+              <span className="friend-badge-tag friend-badge-none">Not friends yet</span>
+              <button className="btn btn-primary btn-sm" onClick={handleAddFriend} disabled={sending}>
+                {sending ? 'Sending…' : `+ Add ${recipe.user_username}`}
+              </button>
+            </>
+          )}
+          {friendErr && <span className="friend-status-err">{friendErr}</span>}
+        </div>
       )}
 
       <section className="recipe-section">

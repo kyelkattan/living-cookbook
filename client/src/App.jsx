@@ -25,6 +25,7 @@ export default function App() {
   const [showReset, setShowReset] = useState(false);
   const [filterTags, setFilterTags] = useState([]);
   const [filterUser, setFilterUser] = useState('');
+  const [incomingCount, setIncomingCount] = useState(0);
 
   // Auth state — listen for session + handle password recovery links
   useEffect(() => {
@@ -72,6 +73,16 @@ export default function App() {
   }, []);
 
   useEffect(() => { fetchRecipes(); }, [fetchRecipes]);
+
+  // Incoming friend-request count for the header badge. Refreshed on sign-in and
+  // after any friend action taken on the account page.
+  const refreshFriendCounts = useCallback(async () => {
+    if (!user) { setIncomingCount(0); return; }
+    const { data, error: err } = await supabase.rpc('friend_requests_incoming');
+    if (!err) setIncomingCount((data || []).length);
+  }, [user]);
+
+  useEffect(() => { refreshFriendCounts(); }, [refreshFriendCounts]);
 
   // All unique tags and users for the filter panel
   const availableTags = useMemo(() =>
@@ -220,9 +231,10 @@ export default function App() {
                 <button
                   className="header-user-btn"
                   onClick={() => setView('account')}
-                  title="Account settings"
+                  title={incomingCount > 0 ? `${incomingCount} pending friend request${incomingCount === 1 ? '' : 's'}` : 'Account settings'}
                 >
-                  [{user.username || user.email}]
+                  <span className="header-user-label">[{user.username || user.email}]</span>
+                  {incomingCount > 0 && <span className="header-badge">{incomingCount}</span>}
                 </button>
                 <button className="btn btn-ghost" onClick={handleLogout}>LOGOUT</button>
               </>
@@ -290,7 +302,7 @@ export default function App() {
         )}
 
         {view === 'account' && user && (
-          <AccountPage user={user} onUpdateUser={setUser} />
+          <AccountPage user={user} onUpdateUser={setUser} onFriendsChanged={refreshFriendCounts} />
         )}
       </main>
 
