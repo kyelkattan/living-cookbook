@@ -718,11 +718,10 @@ button.chip-active:hover { background: #4a2010 !important; border-color: #4a2010
 .image-upload-zone {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   border: 2px dashed var(--dim); padding: 2rem 1rem; cursor: pointer;
-  color: var(--text-muted); font-family: var(--font-mono); font-size: 1rem;
+  color: var(--text-muted); font-family: var(--font-mono); font-size: 0.85rem;
   transition: border-color 0.15s;
 }
 .image-upload-zone:hover { border-color: #2c1208; color: #1a0a04; }
-.image-upload-hint { font-size: 0.85rem; }
 
 .image-preview { position: relative; }
 .image-preview img {
