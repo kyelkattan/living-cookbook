@@ -1286,6 +1286,86 @@ button.chip-active:hover { background: #4a2010 !important; border-color: #4a2010
   margin-bottom: 2px;
 }
 
+/* ── Import recipe ─────────────────────────────────────────── */
+.recipe-form-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.import-open-btn { flex-shrink: 0; }
+
+.import-hint {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin: -1rem 0 1.75rem;
+  line-height: 1.5;
+}
+
+.import-modal { width: min(560px, calc(100vw - 2rem)); }
+
+.import-intro {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}
+
+.import-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--dim);
+  margin-bottom: 1.25rem;
+}
+.import-tab {
+  font-family: var(--font-pixel);
+  font-size: 0.46rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: color 0.1s;
+}
+.import-tab:hover { color: #1a0a04; }
+.import-tab-active { color: #1a0a04; border-bottom-color: var(--gold); }
+
+.import-textarea { width: 100%; resize: vertical; }
+.import-image { min-height: 120px; }
+
+.import-loading {
+  font-family: var(--font-mono);
+  font-size: 0.98rem;
+  color: var(--amber);
+  margin-top: 1rem;
+  line-height: 1.5;
+}
+
+.import-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-dim);
+}
+.import-remaining {
+  font-family: var(--font-pixel);
+  font-size: 0.4rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.import-actions { display: flex; gap: 0.75rem; }
+
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 680px) {
   /* ── Layout ── */

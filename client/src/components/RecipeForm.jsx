@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import ComboBox from './ComboBox';
 import CategoryPicker from './CategoryPicker';
+import ImportRecipeModal from './ImportRecipeModal';
 import { UNITS } from '../data/units';
 import { REQUIRED_CATEGORIES, STANDARD_CATEGORIES } from '../data/categories';
 import { VISIBILITY_OPTIONS, DEFAULT_VISIBILITY } from '../data/visibility';
@@ -38,6 +39,7 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
   const [pastTools, setPastTools] = useState([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   useEffect(() => {
     const ALL_BUILTIN = new Set([...REQUIRED_CATEGORIES, ...STANDARD_CATEGORIES]);
@@ -95,6 +97,19 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
     setSharedWith(prev =>
       prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
     );
+
+  // Populate the form from an AI-extracted recipe. The user reviews/edits before
+  // saving — we only fill fields that came back with content.
+  const applyImported = (data) => {
+    if (data.name) setName(data.name);
+    if (data.description) setDescription(data.description);
+    if (data.categories?.length) setCategories(data.categories);
+    if (data.ingredients?.length) setIngredients(data.ingredients.map(normalizeIngredient));
+    if (data.steps?.length) setSteps(data.steps);
+    if (data.tools?.length) setTools(data.tools);
+    setShowImport(false);
+    setError('');
+  };
 
   const addTool = () => {
     const val = toolInput.trim();
@@ -169,7 +184,25 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
 
   return (
     <form className="recipe-form" onSubmit={handleSubmit}>
-      <h1>{initialRecipe ? 'Edit Recipe' : 'New Recipe'}</h1>
+      <div className="recipe-form-head">
+        <h1>{initialRecipe ? 'Edit Recipe' : 'New Recipe'}</h1>
+        {!initialRecipe && (
+          <button type="button" className="btn btn-ghost import-open-btn" onClick={() => setShowImport(true)}>
+            ✦ Import Recipe
+          </button>
+        )}
+      </div>
+
+      {!initialRecipe && (
+        <p className="import-hint">
+          Have a recipe elsewhere? <button type="button" className="link-btn" onClick={() => setShowImport(true)}>Import it</button> from
+          pasted text or a photo and we'll fill in the form.
+        </p>
+      )}
+
+      {showImport && (
+        <ImportRecipeModal onClose={() => setShowImport(false)} onImported={applyImported} />
+      )}
 
       {error && <p className="form-error">{error}</p>}
 

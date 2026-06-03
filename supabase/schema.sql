@@ -421,15 +421,39 @@ CREATE POLICY "recipes_select_visible" ON public.recipes FOR SELECT
     OR (visibility = 'specific_friends' AND public.recipe_is_shared_with(id, auth.uid()))
   );
 
+-- ── Recipe imports (AI extraction) ─────────────────────────────────────────────
+-- One row per successful "Import Recipe" run. Used to enforce a per-user daily
+-- rate limit (10 imports / rolling 24h). Rows are written ONLY by the
+-- import-recipe Edge Function using the service-role key (which bypasses RLS);
+-- the client just reads its own history to show the remaining quota.
+
+CREATE TABLE IF NOT EXISTS public.import_logs (
+  id         BIGSERIAL PRIMARY KEY,
+  user_id    UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+-- Powers both the rate-limit count and the "X of 10 remaining" lookup.
+CREATE INDEX IF NOT EXISTS import_logs_user_time_idx ON public.import_logs (user_id, created_at DESC);
+
+ALTER TABLE public.import_logs ENABLE ROW LEVEL SECURITY;
+
+-- Users may read their own import history. No INSERT/UPDATE/DELETE policies —
+-- writes happen only through the Edge Function's service-role client.
+DROP POLICY IF EXISTS "import_logs_select_own" ON public.import_logs;
+CREATE POLICY "import_logs_select_own" ON public.import_logs FOR SELECT
+  USING (auth.uid() = user_id);
+
 -- ── Migration helpers ────────────────────────────────────────────────────────
 -- If the recipes table already exists, run these to add later columns:
 -- ALTER TABLE public.recipes ADD COLUMN IF NOT EXISTS origin TEXT;
 -- ALTER TABLE public.recipes ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL
 --   DEFAULT 'public' CHECK (visibility IN ('public','friends','specific_friends','private'));
 --
--- The Friendships and Recipe privacy sections are fully idempotent — re-running
--- this file (or just those sections) against an existing database is safe. The
--- standalone supabase/recipe_privacy.sql applies just the privacy changes.
+-- The Friendships, Recipe privacy, and Recipe imports sections are fully
+-- idempotent — re-running this file (or just those sections) against an existing
+-- database is safe. Standalone apply files exist for the incremental changes:
+-- supabase/recipe_privacy.sql and supabase/import_logs.sql.
 
 -- ── Notes ─────────────────────────────────────────────────────────────────────
 -- In Supabase Dashboard → Authentication → Settings:
