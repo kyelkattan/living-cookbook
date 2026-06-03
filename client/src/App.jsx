@@ -64,7 +64,7 @@ export default function App() {
     try {
       const { data, error: err } = await supabase
         .from('recipes')
-        .select('id, name, description, created_at, categories, image, tools, user_id, profiles(username)')
+        .select('id, name, description, created_at, categories, image, tools, user_id, visibility, profiles(username)')
         .order('created_at', { ascending: false });
       if (err) throw err;
       setAllRecipes((data || []).map(normalizeRecipe));
@@ -72,7 +72,9 @@ export default function App() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchRecipes(); }, [fetchRecipes]);
+  // Refetch when the signed-in user changes: RLS returns different rows once the
+  // session is restored, so friends-only / shared recipes appear after sign-in.
+  useEffect(() => { fetchRecipes(); }, [fetchRecipes, user?.id]);
 
   // Incoming friend-request count for the header badge. Refreshed on sign-in and
   // after any friend action taken on the account page.
@@ -142,32 +144,53 @@ export default function App() {
     setUser(null); setView('home');
   };
 
+  // Rewrite a recipe's specific_friends share list: clear it, then insert the
+  // selected friends when the level is specific_friends. Owner-only via RLS.
+  const syncRecipeShares = async (recipeId, visibility, sharedWith) => {
+    const { error: delErr } = await supabase
+      .from('recipe_shares')
+      .delete()
+      .eq('recipe_id', recipeId);
+    if (delErr) throw new Error(delErr.message);
+    if (visibility === 'specific_friends' && sharedWith?.length) {
+      const rows = sharedWith.map(uid => ({ recipe_id: recipeId, user_id: uid }));
+      const { error: insErr } = await supabase.from('recipe_shares').insert(rows);
+      if (insErr) throw new Error(insErr.message);
+    }
+  };
+
   const handleSaveRecipe = async (data) => {
     if (!user) { setShowAuth(true); throw new Error('Please sign in to save recipes'); }
-    const { error: err } = await supabase
+    const { sharedWith, ...recipe } = data;
+    const { data: inserted, error: err } = await supabase
       .from('recipes')
-      .insert({ ...data, user_id: user.id });
+      .insert({ ...recipe, user_id: user.id })
+      .select('id')
+      .single();
     if (err) throw new Error(err.message);
+    await syncRecipeShares(inserted.id, recipe.visibility, sharedWith);
     await fetchRecipes();
     setView('home');
   };
 
   const handleUpdateRecipe = async (data) => {
     if (!user) { setShowAuth(true); throw new Error('Please sign in to edit recipes'); }
+    const { sharedWith, ...recipe } = data;
 
     // Remove the old image from storage if it was replaced
     const oldImage = selectedRecipe.image;
-    if (oldImage && oldImage !== data.image) {
+    if (oldImage && oldImage !== recipe.image) {
       await supabase.storage.from('recipe-images').remove([oldImage]);
     }
 
     const { data: updated, error: err } = await supabase
       .from('recipes')
-      .update(data)
+      .update(recipe)
       .eq('id', selectedRecipe.id)
       .select('*, profiles(username)')
       .single();
     if (err) throw new Error(err.message);
+    await syncRecipeShares(selectedRecipe.id, recipe.visibility, sharedWith);
     setSelectedRecipe(normalizeRecipe(updated));
     await fetchRecipes();
     setView('detail');

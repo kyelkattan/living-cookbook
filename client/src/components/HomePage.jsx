@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import PixelChef from './PixelChef';
 import { getFoodArt } from '../utils/foodArt';
+import { getVisibility } from '../data/visibility';
 import { supabase, getImageUrl } from '../lib/supabase';
 
 const RAINBOW = ['#cc2222', '#cc7700', '#c8aa00', '#22aa44', '#2266cc', '#aa22cc', '#cc2288'];
@@ -51,10 +52,13 @@ export default function HomePage({ user, allRecipes, onSearch, onViewRecipe, onA
   const [selectedIdx, setSelectedIdx] = useState(-1);
   const inputRef = useRef(null);
 
+  // Re-run when the signed-in user changes: RLS widens what's visible after
+  // sign-in, so newly visible recipes can be featured.
   useEffect(() => {
+    setLoading(true);
     supabase
       .from('recipes')
-      .select('id, name, description, categories, image, profiles(username)')
+      .select('id, name, description, categories, image, visibility, profiles(username)')
       .order('created_at', { ascending: false })
       .limit(20)
       .then(({ data }) => {
@@ -66,7 +70,7 @@ export default function HomePage({ user, allRecipes, onSearch, onViewRecipe, onA
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [user?.id]);
 
   const suggestions = query.trim().length > 0
     ? allRecipes
@@ -214,6 +218,11 @@ export default function HomePage({ user, allRecipes, onSearch, onViewRecipe, onA
                   )}
                   <div className="featured-info">
                     <div className="featured-name">{recipe.name}</div>
+                    {recipe.visibility && recipe.visibility !== 'public' && (
+                      <div className="featured-visibility">
+                        {getVisibility(recipe.visibility).icon} {getVisibility(recipe.visibility).label}
+                      </div>
+                    )}
                     {recipe.categories?.length > 0 && (
                       <div className="featured-cats">
                         {recipe.categories.slice(0, 2).join(' · ')}

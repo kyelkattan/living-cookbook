@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { REQUIRED_CATEGORIES } from '../data/categories';
+import { getVisibility } from '../data/visibility';
 import { getImageUrl, supabase } from '../lib/supabase';
 
 function formatIngredient(ing) {
@@ -10,6 +11,7 @@ function formatIngredient(ing) {
 export default function RecipeDetail({ recipe, onDelete, onEdit, user }) {
   const [confirming, setConfirming] = useState(false);
   const isOwner = user && recipe.user_id === user.id;
+  const vis = getVisibility(recipe.visibility);
 
   // Friendship status with the recipe's author (only when signed in and not the
   // owner). Uses the are_friends + send_friend_request RPCs from the backend.
@@ -66,9 +68,17 @@ export default function RecipeDetail({ recipe, onDelete, onEdit, user }) {
           ))}
         </div>
       )}
-      {recipe.user_username && (
-        <p className="recipe-attribution">Added by {recipe.user_username}</p>
-      )}
+      <div className="recipe-meta-row">
+        {recipe.user_username && (
+          <span className="recipe-attribution">Added by {recipe.user_username}</span>
+        )}
+        <span
+          className={`visibility-badge visibility-badge-${vis.value}`}
+          title={vis.description}
+        >
+          <span aria-hidden="true">{vis.icon}</span> {vis.label}
+        </span>
+      </div>
 
       {showFriendStatus && areFriends !== null && (
         <div className="recipe-friend-status">

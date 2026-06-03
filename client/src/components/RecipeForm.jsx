@@ -3,6 +3,7 @@ import ComboBox from './ComboBox';
 import CategoryPicker from './CategoryPicker';
 import { UNITS } from '../data/units';
 import { REQUIRED_CATEGORIES, STANDARD_CATEGORIES } from '../data/categories';
+import { VISIBILITY_OPTIONS, DEFAULT_VISIBILITY } from '../data/visibility';
 import { supabase, getImageUrl } from '../lib/supabase';
 
 const emptyIngredient = () => ({ amount: '', unit: '', item: '' });
@@ -27,6 +28,10 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
   const [tools, setTools] = useState(initialRecipe?.tools ?? []);
   const [toolInput, setToolInput] = useState('');
   const [origin, setOrigin] = useState(initialRecipe?.origin ?? '');
+  const [visibility, setVisibility] = useState(initialRecipe?.visibility ?? DEFAULT_VISIBILITY);
+  const [friends, setFriends] = useState([]);
+  const [friendsLoading, setFriendsLoading] = useState(true);
+  const [sharedWith, setSharedWith] = useState([]); // user_ids selected for specific_friends
   const [promotedCategories, setPromotedCategories] = useState([]);
   const [pastItems, setPastItems] = useState([]);
   const [pastCategories, setPastCategories] = useState([]);
@@ -62,6 +67,34 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
       );
     });
   }, []);
+
+  // Load the author's friends (for the specific_friends picker) and, when editing
+  // a recipe that's already shared with specific friends, its current share list.
+  useEffect(() => {
+    let active = true;
+    setFriendsLoading(true);
+    supabase.rpc('friends_list').then(({ data }) => {
+      if (active) {
+        setFriends(data || []);
+        setFriendsLoading(false);
+      }
+    });
+    if (initialRecipe?.id) {
+      supabase
+        .from('recipe_shares')
+        .select('user_id')
+        .eq('recipe_id', initialRecipe.id)
+        .then(({ data }) => {
+          if (active && data) setSharedWith(data.map(r => r.user_id));
+        });
+    }
+    return () => { active = false; };
+  }, [initialRecipe?.id]);
+
+  const toggleSharedWith = (userId) =>
+    setSharedWith(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
 
   const addTool = () => {
     const val = toolInput.trim();
@@ -119,10 +152,15 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
     if (!categories.some(c => c === 'Baking' || c === 'Cooking')) return setError('Select Baking, Cooking, or both.');
     if (!cleanIngredients.length) return setError('Add at least one ingredient.');
     if (!cleanSteps.length) return setError('Add at least one step.');
+    if (visibility === 'specific_friends' && sharedWith.length === 0)
+      return setError('Pick at least one friend to share with, or choose a different visibility.');
+
+    // Shares only matter for the specific_friends level; clear them otherwise.
+    const shares = visibility === 'specific_friends' ? sharedWith : [];
 
     setSaving(true);
     try {
-      await onSave({ name, description, categories, image: imageFilename, ingredients: cleanIngredients, steps: cleanSteps, tools, origin: origin.trim() || null });
+      await onSave({ name, description, categories, image: imageFilename, ingredients: cleanIngredients, steps: cleanSteps, tools, origin: origin.trim() || null, visibility, sharedWith: shares });
     } catch (e) {
       setError(e.message);
       setSaving(false);
@@ -295,6 +333,63 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
           value={origin}
           onChange={e => setOrigin(e.target.value)}
         />
+      </div>
+
+      <div className="form-group">
+        <label>Who can see this?</label>
+        <div className="visibility-options">
+          {VISIBILITY_OPTIONS.map(opt => (
+            <label
+              key={opt.value}
+              className={`visibility-option${visibility === opt.value ? ' visibility-option-active' : ''}`}
+            >
+              <input
+                type="radio"
+                name="visibility"
+                value={opt.value}
+                checked={visibility === opt.value}
+                onChange={() => setVisibility(opt.value)}
+              />
+              <span className="visibility-icon" aria-hidden="true">{opt.icon}</span>
+              <span className="visibility-text">
+                <span className="visibility-label">{opt.label}</span>
+                <span className="visibility-desc">{opt.description}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+
+        {visibility === 'specific_friends' && (
+          <div className="visibility-friends">
+            {friendsLoading ? (
+              <p className="form-hint">Loading your friends…</p>
+            ) : friends.length === 0 ? (
+              <p className="form-hint">
+                You have no friends yet. Add some from your account page to share
+                recipes with specific people.
+              </p>
+            ) : (
+              <>
+                <p className="form-hint">Select the friends who can see this recipe:</p>
+                <div className="visibility-friend-list">
+                  {friends.map(f => (
+                    <label
+                      key={f.user_id}
+                      className={`visibility-friend${sharedWith.includes(f.user_id) ? ' visibility-friend-active' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={sharedWith.includes(f.user_id)}
+                        onChange={() => toggleSharedWith(f.user_id)}
+                      />
+                      <span>{f.username}</span>
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="form-actions">
