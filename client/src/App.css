@@ -567,9 +567,9 @@ body {
   font-family: var(--font-mono);
   font-size: 1.1rem;
   padding: 4px 0;
-  color: var(--amber);
+  color: var(--text);
 }
-.ingredients-list li::before { content: '→ '; color: var(--amber); }
+.ingredients-list li::before { content: '→ '; color: var(--text); }
 
 .steps-list { list-style: none; padding: 0; }
 .steps-list li {
@@ -578,14 +578,14 @@ body {
   border-bottom: 1px solid var(--border-dim);
   font-family: var(--font-mono);
   font-size: 1.05rem;
-  color: var(--amber);
+  color: var(--text);
 }
 .steps-list li:last-child { border-bottom: none; }
 
 .step-num {
   font-family: var(--font-pixel);
   font-size: 0.46rem;
-  color: var(--amber);
+  color: var(--text);
   min-width: 2rem;
   padding-top: 4px;
 }
