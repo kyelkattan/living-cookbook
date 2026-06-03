@@ -8,6 +8,8 @@ import AuthModal from './components/AuthModal';
 import ResetPasswordModal from './components/ResetPasswordModal';
 import HomePage from './components/HomePage';
 import AccountPage from './components/AccountPage';
+import ShoppingListBar from './components/ShoppingListBar';
+import { useShoppingList } from './hooks/useShoppingList';
 
 function normalizeRecipe(r) {
   return { ...r, user_username: r.profiles?.username || '' };
@@ -26,6 +28,7 @@ export default function App() {
   const [filterTags, setFilterTags] = useState([]);
   const [filterUser, setFilterUser] = useState('');
   const [incomingCount, setIncomingCount] = useState(0);
+  const shopping = useShoppingList(user);
 
   // Auth state — listen for session + handle password recovery links
   useEffect(() => {
@@ -268,6 +271,15 @@ export default function App() {
         </div>
       </header>
 
+      <ShoppingListBar
+        lines={shopping.lines}
+        recipes={shopping.recipes}
+        remainingCount={shopping.remainingCount}
+        onToggle={shopping.toggleLine}
+        onRemoveRecipe={shopping.removeRecipe}
+        onClear={shopping.clear}
+      />
+
       <main className="app-main">
         {view === 'home' && (
           <HomePage
@@ -308,6 +320,8 @@ export default function App() {
             user={user}
             onDelete={handleDeleteRecipe}
             onEdit={() => setView('edit')}
+            shopping={shopping}
+            onRequireAuth={() => setShowAuth(true)}
           />
         )}
 

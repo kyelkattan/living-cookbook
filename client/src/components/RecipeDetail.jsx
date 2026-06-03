@@ -8,10 +8,47 @@ function formatIngredient(ing) {
   return [ing.amount, ing.unit, ing.item].filter(Boolean).join(' ');
 }
 
-export default function RecipeDetail({ recipe, onDelete, onEdit, user }) {
+export default function RecipeDetail({ recipe, onDelete, onEdit, user, shopping, onRequireAuth }) {
   const [confirming, setConfirming] = useState(false);
   const isOwner = user && recipe.user_id === user.id;
   const vis = getVisibility(recipe.visibility);
+
+  // Shopping list state for this recipe. `inList` reads live from the hook's rows
+  // so it flips as soon as the recipe is added/removed (here or on another device).
+  const inList = !!(user && shopping?.isRecipeInList(recipe.id));
+  const [shopBusy, setShopBusy] = useState(false);
+  const [shopMsg, setShopMsg] = useState('');
+
+  const handleShop = async () => {
+    if (!user) {
+      setShopMsg('Please sign in to use your shopping list.');
+      onRequireAuth?.();
+      return;
+    }
+    setShopBusy(true);
+    setShopMsg('');
+    try {
+      await shopping.addRecipe(recipe);
+      setShopMsg('Added to your shopping list.');
+    } catch (e) {
+      setShopMsg(e.message);
+    } finally {
+      setShopBusy(false);
+    }
+  };
+
+  const handleRemoveFromList = async () => {
+    setShopBusy(true);
+    setShopMsg('');
+    try {
+      await shopping.removeRecipe(recipe.id);
+      setShopMsg('Removed from your shopping list.');
+    } catch (e) {
+      setShopMsg(e.message);
+    } finally {
+      setShopBusy(false);
+    }
+  };
 
   // Friendship status with the recipe's author (only when signed in and not the
   // owner). Uses the are_friends + send_friend_request RPCs from the backend.
@@ -97,6 +134,22 @@ export default function RecipeDetail({ recipe, onDelete, onEdit, user }) {
           {friendErr && <span className="friend-status-err">{friendErr}</span>}
         </div>
       )}
+
+      <div className="recipe-shop-row">
+        {inList ? (
+          <>
+            <span className="shopping-in-list">🛒 In your shopping list</span>
+            <button className="btn btn-ghost btn-sm" onClick={handleRemoveFromList} disabled={shopBusy}>
+              Remove from list
+            </button>
+          </>
+        ) : (
+          <button className="btn btn-primary" onClick={handleShop} disabled={shopBusy}>
+            {shopBusy ? 'Adding…' : '🛒 Shop this Recipe'}
+          </button>
+        )}
+        {shopMsg && <span className="shopping-shop-msg">{shopMsg}</span>}
+      </div>
 
       <section className="recipe-section">
         <h2>Ingredients</h2>

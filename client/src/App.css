@@ -1423,4 +1423,172 @@ button.chip-active:hover { background: #4a2010 !important; border-color: #4a2010
 
   /* ── Modals ── */
   .modal { padding: 1.25rem; }
+
+  /* ── Shopping list ── */
+  .shopping-bar-head { flex-wrap: wrap; gap: 0.4rem 0.75rem; }
+  .shopping-bar-count { margin-left: 0; flex-basis: 100%; }
+  .shopping-item-sources { display: block; margin-left: 0; }
+}
+
+/* ── Shopping list ──────────────────────────────────────────── */
+.shopping-bar {
+  background: var(--surface-2);
+  border-bottom: 3px solid #2c1208;
+  box-shadow: 0 2px 6px rgba(50,20,5,0.2);
+}
+
+.shopping-bar-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.7rem 2rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+}
+.shopping-bar-head:hover { background: rgba(192,128,32,0.12); }
+
+.shopping-bar-title {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  letter-spacing: 2px;
+  color: #2c1208;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.shopping-bar-cart { font-size: 1rem; }
+
+.shopping-bar-count {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--amber);
+}
+
+.shopping-bar-chevron {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.shopping-bar-body {
+  padding: 0.5rem 2rem 1.25rem;
+  border-top: 1px solid var(--border-dim);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.shopping-group { margin-top: 1rem; }
+
+.shopping-group-head {
+  font-family: var(--font-pixel);
+  font-size: 0.46rem;
+  letter-spacing: 2px;
+  color: #2c1208;
+  border-bottom: 1px solid var(--border-dim);
+  padding-bottom: 6px;
+  margin-bottom: 0.6rem;
+}
+.shopping-group-head-recipe {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.shopping-group-head-recipe h3 {
+  font-family: var(--font-pixel);
+  font-size: 0.46rem;
+  letter-spacing: 2px;
+  color: #2c1208;
+}
+
+.shopping-remove-btn {
+  background: none;
+  border: 1px solid var(--dim);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-pixel);
+  font-size: 0.38rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 5px 9px;
+  flex-shrink: 0;
+}
+.shopping-remove-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+.shopping-group-note {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 2px 0 4px;
+}
+
+.shopping-list-items { list-style: none; padding: 0; margin: 0; }
+
+.shopping-item { padding: 3px 0; }
+.shopping-item label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+.shopping-item input[type="checkbox"] {
+  accent-color: var(--amber);
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.shopping-item-done .shopping-item-text {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+.shopping-item-sources { color: var(--text-muted); font-size: 0.92rem; }
+
+.shopping-bar-actions {
+  margin-top: 1.25rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.shopping-clear-confirm {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+/* Shop-this-recipe control on the detail page */
+.recipe-shop-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+.shopping-in-list {
+  font-family: var(--font-pixel);
+  font-size: 0.42rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 5px 9px;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+}
+.shopping-shop-msg {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--amber);
 }
