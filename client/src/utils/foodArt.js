@@ -1,5 +1,19 @@
 export function getFoodArt(categories = []) {
   const cats = categories.map(c => c.toLowerCase());
+  if (cats.some(c => c.includes('baking') || c.includes('baked')))
+    return [
+      " |i|i| ",
+      "(~~~~~)",
+      "|     |",
+      " \\___/ ",
+    ].join('\n');
+  if (cats.some(c => c === 'cooking' || c.includes('cook')))
+    return [
+      "   ____ ",
+      "--/    \\",
+      "  |    |",
+      "   \\__/ ",
+    ].join('\n');
   if (cats.some(c => c.includes('breakfast') || c.includes('brunch')))
     return [
       "  . .  ",

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { REQUIRED_CATEGORIES } from '../data/categories';
 import { getVisibility } from '../data/visibility';
 import { getImageUrl, supabase } from '../lib/supabase';
+import { getFoodArt } from '../utils/foodArt';
 
 function formatIngredient(ing) {
   if (typeof ing === 'string') return ing;
@@ -91,9 +92,13 @@ export default function RecipeDetail({ recipe, onDelete, onEdit, user, shopping,
     <article className="recipe-detail">
       <h1>{recipe.name}</h1>
       {recipe.description && <p className="description">{recipe.description}</p>}
-      {recipe.image && (
+      {recipe.image ? (
         <div className="recipe-image">
           <img src={getImageUrl(recipe.image)} alt={recipe.name} />
+        </div>
+      ) : (
+        <div className="detail-ascii">
+          <pre>{getFoodArt(recipe.categories || [])}</pre>
         </div>
       )}
       {recipe.categories?.length > 0 && (
