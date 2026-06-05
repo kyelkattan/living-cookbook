@@ -156,6 +156,15 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
   const removeStep = (index) =>
     setSteps(prev => prev.filter((_, i) => i !== index));
 
+  const moveStep = (index, dir) =>
+    setSteps(prev => {
+      const next = [...prev];
+      const target = index + dir;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -344,9 +353,17 @@ export default function RecipeForm({ onSave, onCancel, initialRecipe, user }) {
                 onChange={e => updateStep(i, e.target.value)}
               />
               {steps.length > 1 && (
-                <button type="button" className="btn-icon" onClick={() => removeStep(i)} aria-label="Remove">
-                  &times;
-                </button>
+                <div className="step-controls">
+                  <button type="button" className="btn-icon" onClick={() => removeStep(i)} aria-label="Remove">
+                    &times;
+                  </button>
+                  <button type="button" className="btn-icon btn-icon-move" onClick={() => moveStep(i, -1)} disabled={i === 0} aria-label="Move up">
+                    ▲
+                  </button>
+                  <button type="button" className="btn-icon btn-icon-move" onClick={() => moveStep(i, 1)} disabled={i === steps.length - 1} aria-label="Move down">
+                    ▼
+                  </button>
+                </div>
               )}
             </div>
           ))}

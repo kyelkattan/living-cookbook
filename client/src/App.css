@@ -194,6 +194,10 @@ body {
   transition: all 0.1s;
 }
 .btn-icon:hover { border-color: var(--danger); color: var(--danger); }
+.btn-icon-move:hover { border-color: var(--text-muted) !important; color: var(--text) !important; }
+.btn-icon-move:disabled { opacity: 0.25; cursor: default; pointer-events: none; }
+
+.step-controls { display: flex; flex-direction: column; gap: 3px; align-items: center; }
 
 /* ── Inputs ───────────────────────────────────────────────── */
 .form-input, .form-textarea, .search-input {
@@ -291,7 +295,7 @@ body {
   min-width: 2rem;
   font-family: var(--font-pixel);
   font-size: 0.46rem;
-  color: var(--gold);
+  color: var(--text);
   padding-top: 10px;
 }
 
@@ -741,6 +745,7 @@ button.chip-active:hover { background: #4a2010 !important; border-color: #4a2010
   transition: border-color 0.15s;
 }
 .image-upload-zone:hover { border-color: #2c1208; color: #1a0a04; }
+.image-upload-hint { display: block; font-size: 0.4rem; opacity: 0.75; }
 
 .image-preview { position: relative; }
 .image-preview img {
@@ -1321,6 +1326,8 @@ button.chip-active:hover { background: #4a2010 !important; border-color: #4a2010
   margin: -1rem 0 1.75rem;
   line-height: 1.5;
 }
+.import-hint .link-btn { color: var(--text); }
+.import-hint .link-btn:hover { color: var(--text); }
 
 .import-modal { width: min(560px, calc(100vw - 2rem)); }
 
